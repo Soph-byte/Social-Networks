@@ -1,0 +1,54 @@
+---
+title: "Social_Networks_first_assignment"
+format: html
+editor: visual
+---
+
+## Libraries
+```{r}
+library(readr)
+library(igraph)
+
+```
+
+
+## Running Code
+
+
+```{r}
+
+edges <- read_csv("network/edges.csv")
+
+
+
+nodes <- read_csv("network/nodes.csv")
+
+```
+
+
+```{r}
+g <- graph_from_data_frame(d = edges, vertices = nodes, directed = TRUE)
+
+```
+
+```{r}
+g
+summary(g)
+
+V(g)$name  
+E(g)$weight 
+
+```
+
+
+```{r}
+plot(g, vertex.size=5, vertex.label=NA)
+
+```
+
+```{r}
+head(V(g)$name) 
+head(E(g))        
+
+```
+
