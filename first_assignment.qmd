@@ -4,32 +4,114 @@ format: html
 editor: visual
 ---
 
+This project focuses on the analysis of a bipartite network that represents the Abu Sayyaf Group's involvement in kidnapping events in the Philippines in 2014. The dataset, obtained from the ICON project, links members of the Abu Sayyaf Group with the specific kidnappings they were involved in. 
+
+The goal of this analysis is to explore fundamental network properties, such as node connectivity, degree distribution, and overall structure. These properties will allow us to gain insights into the organizational dynamics of the group, which can be reflected in the network's topology.
+
 ## Libraries
+
 ```{r}
 library(readr)
 library(igraph)
-
+library(ggplot2)
 ```
-
 
 ## Running Code
 
-
 ```{r}
-
 edges <- read_csv("network/edges.csv")
-
-
 
 nodes <- read_csv("network/nodes.csv")
 
+#Buiding a graph from data
+g <- graph_from_data_frame(d = edges, vertices = nodes, directed = TRUE)
 ```
 
+Analyze the network by answer the following questions:
+
+*1. What is the number of nodes and links?*
 
 ```{r}
-g <- graph_from_data_frame(d = edges, vertices = nodes, directed = TRUE)
-
+vcount(g)#Nodes = Vertices 
+ecount(g)#Links = Edges 
 ```
+Our dataset has 402 links and 351 nodes
+
+*2. What is the average degree in the network? And the standard deviation of the degree?*
+
+To calculate the average degree and standard deviation, we can use the degree values obtained from the following code:
+
+```{r}
+deg <- degree(g,mode="all")
+```
+
+```{r}
+mean(deg)
+sd(deg)
+```
+The average degree of the network is 2.29.  This points to a sparse and loosely connected structure, consistent with how clandestine networks often operate: keeping operational cells small to avoid detection. The standard deviation of the degree is 3.89, which is quite high relative to the mean. This suggests a heterogeneous structure: while most nodes are weakly connected, a few nodes are highly connected, likely representing core individuals in the Abu Sayyaf Group or events that involved multiple operatives. This uneven distribution reflects typical features of terrorist or militant group dynamics, where key figures coordinate multiple decentralized actions.
+
+
+*3. Plot the degree distribution in linear-linear scale and in log-log-scale. Does it have a typical connectivity? What is the degree of the most connected node?*
+
+```{r}
+#linear-linear
+ggplot() + geom_histogram(aes(x=degree(g,mode="all"))) + labs(x="Degree",y="Density")
+
+max_degree_node <- which.max(deg)
+deg[max_degree_node]
+```
+The histogram illustrates the distribution of node degrees within the network, showing how many connections each node has. From the distribution, it's clear that the vast majority of nodes have a very low degree, typically around 1 or 2 connections: most nodes are minimally connected, indicating a sparse network structure. However, the histogram also reveals a long right tail, meaning that while most nodes are weakly connected, a small number of nodes have a significantly higher degree — some with 20, 40, or even 58 connections, the degree of the most connected node. This pattern suggests a right-skewed or heavy-tailed distribution, where a few highly connected nodes coexist with many low-degree nodes.
+
+```{r}
+#log
+ggplot() + 
+  geom_histogram(aes(x=degree(g, mode="all"))) + 
+  scale_x_log10() + 
+  scale_y_log10() + 
+  labs(x="Degree (log scale)", y="Density (log scale)") 
+  
+```
+While the linear-linear histogram highlights the skewed distribution of node degrees and the presence of a few highly connected hubs, the log-log plot offers a deeper view into the scaling behavior of the network. By transforming both axes logarithmically, the log-log visualization makes it easier to detect whether the degree distribution follows a power-law, which is often indicative of a scale-free network.
+
+In this plot, the degree distribution appears to align roughly along a straight line in the log-log space, especially in the tail. This pattern supports the idea that the network may be scale-free, where a small number of nodess dominate the connectivity, and the probability of a node having a high degree decreases polynomially rather than exponentially.
+
+These nodes, the few ones that are highly connected, can play a crucial role in the flow of information, connectivity, and resilience of the network. Their presence may also influence the network’s vulnerability — if one of them fails or is removed, it could significantly disrupt the system.
+
+*4. What is the clustering coefficient (transitivity) in the network?*
+
+```{r}
+transitivity(g)
+```
+The global clustering coefficient (transitivity) of the network is 0, which means that there are no closed triplets — in other words, there are no triangles where three nodes are all directly connected to each other. This suggests that the network is not clustered at all, and that nodes tend to connect in a more tree-like or chain-like structure rather than forming tightly knit groups. Such a result indicates a network with no local cohesion, where neighbors of a node are almost never connected to each other.
+
+This result is significant in the context of Abu Sayyaf operations: while limiting collaboration, enhances the group’s resilience against infiltration.
+
+*5. What is the assortativity (degree) in the network?*
+
+```{r}
+assortativity_degree(g)
+```
+The assortativity coefficient based on node degree is -0.23, indicating a moderate negative assortativity in the network. This means that nodes with a high degree tend to connect more often with nodes that have a low degree, rather than with other highly connected nodes.
+
+This reflects a centralized structure, where a few key figures are repeatedly involved across many separate events, while most events involve only a small number of actors.
+
+In this kind of criminal or militant network, such disassortative mixing can imply a strategic effort to decentralize risk, where central figures maintain influence across various operations without necessarily linking collaborators directly to each other — reducing traceability and limiting exposure in case of capture.
+
+*6. Using the Louvain method, does the network have a community structure? If so, what is its modularity?*
+
+```{r}
+g_undirected <- as_undirected(g, mode = "collapse")
+lg <- cluster_leiden(g_undirected)
+```
+
+7. Test that the clustering coefficient in the network cannot be statistically explain by a configuration model in which the nodes have the same degree distribution as the original.
+
+8. Visualize the neighborhood of the node with the largest centrality (closeness)
+
+
+
+
 
 ```{r}
 g
@@ -39,7 +121,6 @@ V(g)$name
 E(g)$weight 
 
 ```
-
 
 ```{r}
 plot(g, vertex.size=5, vertex.label=NA)
@@ -51,4 +132,3 @@ head(V(g)$name)
 head(E(g))        
 
 ```
-
