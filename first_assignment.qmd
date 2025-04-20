@@ -3,10 +3,13 @@ title: "Social_Networks_first_assignment"
 format: html
 editor: visual
 ---
+# Introduction
 
 This project focuses on the analysis of a bipartite network that represents the Abu Sayyaf Group's involvement in kidnapping events in the Philippines in 2014. The dataset, obtained from the ICON project, links members of the Abu Sayyaf Group with the specific kidnappings they were involved in. 
 
 The goal of this analysis is to explore fundamental network properties, such as node connectivity, degree distribution, and overall structure. These properties will allow us to gain insights into the organizational dynamics of the group, which can be reflected in the network's topology.
+
+https://networks.skewed.de/net/kidnappings
 
 ## Libraries
 
