@@ -301,7 +301,14 @@ ego_graph_GC <- make_ego_graph(gGC, order = 1, nodes = top_node_GC)[[1]]
 plot(ego_graph_GC,
      main = paste("Ego Network of Giant Component Node with Largest Closeness:", top_node_GC))
 ```
+
 The ego network of the node with the highest closeness centrality in the Giant Component shows a strong hub structure. The central node  is directly connected to a large number of other nodes, which are themselves not directly connected to each other. This star-shaped pattern shows that the central node is at a very short distance from many others, resulting in a high closeness score.
 
 In comparison to E13, this node’s centrality is structurally meaningful. It plays a key role in connecting a large portion of the network and minimising the average distance to all other nodes in the Giant Component. In conclusion, this shows that closeness centrality is best interpreted for our network within the largest connected component, where the network's true structure and connectivity are visible.
+
+# Conclusion
+
+The analysis reveals that the Abu Sayyaf Group's network is fragmented, decentralized, and strategically structured. A few key nodes concentrate connectivity, while the majority remain peripheral and isolated. This setup, characterized by low local clustering and clearly defined communities, reflects an organization designed to operate securely and remain resilient against detection or disruption. The emerging structure is not random, but rather aligned with an operational model that prioritizes cell isolation and tactical centralization. 
+
+Overall, the network demonstrates an internal logic aimed at maintaining operational efficiency under conditions of secrecy.
 
