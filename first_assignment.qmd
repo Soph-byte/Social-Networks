@@ -119,6 +119,8 @@ The global clustering coefficient (transitivity) of the network is 0, which mean
 
 This result is significant in the context of Abu Sayyaf operations: while limiting collaboration, enhances the group’s resilience against infiltration as each actor is only connected to a "superior" agent.
 
+![](https://media1.tenor.com/m/HP9W1K6dbVoAAAAd/ecu-east-carolina.gif){width="164"}
+
 ### *5. What is the assortativity (degree) in the network?*
 
 ```{r}
@@ -133,7 +135,7 @@ Disassortative mixing by degree is normally a pattern found in fictional or arti
 
 To investigate the structure of the network, we used both the Leiden and Louvain methods.
 
-To use the Louvain algorithm, it is important that we transform our directed network into an undirected network, as it is only designed for undirected networks. We also use the Leiden method as it similar to the Louvain algorithm but works faster (which is not necessary here with our small network but it is still interesting to compare. )
+To use the Louvain algorithm, it is important that we transform our directed network into an undirected network, as it is only designed for undirected networks. We also use the Leiden method as it similar to the Louvain algorithm but works faster (which is not necessary here with our small network but it is still interesting to compare).
 
 ```{r}
 set.seed(123)
@@ -158,7 +160,9 @@ The Louvain method identified ca. 36 communities with a high modularity score of
 
 The Leiden algorithm, on the other hand, detected 351 communities, corresponding to the total number of nodes in the network. The modularity score of −0.011 indicates that this partition is worse than random, and no significant structural groupings were identified.
 
-Overall, we conclude that the Louvain method seems better suited for detecting structural patterns in the Abu Sayyaf network. To further illustrate the differences between the two methods we visualize them. 
+![](https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExbG4xN3RkbmR2Z2xmY3A0d3kzNHA2bXJ3bDloZzlvd3NybDlzM214diZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/ws4pzeC916KRO/giphy.gif){width="390"}
+
+Overall, we conclude that the Louvain method seems better suited for detecting structural patterns in the Abu Sayyaf network. To further illustrate the differences between the two methods we visualize them.
 
 ```{r}
 par(mfrow = c(1, 2))
@@ -170,7 +174,7 @@ plot(leid, g_undirected,
 
 ```
 
-The Louvain method clearly identifies larger and cohesive community clusters. These groups are visibly well-defined, with nodes that are tightly connected internally and more loosely connected to other communities. In contrast, the Leiden algorithm divides the network into many small, fragmented communities, often consisting of just one or two nodes. 
+The Louvain method clearly identifies larger and cohesive community clusters. These groups are visibly well-defined, with nodes that are tightly connected internally and more loosely connected to other communities. In contrast, the Leiden algorithm divides the network into many small, fragmented communities, often consisting of just one or two nodes.
 
 We can see where the modularity scores come from, as modularity is really a summary statistic of the network's clustering quality, where the goodness of the partitions are checked. The higher the modularity, the better the description of the network communities are. Hence, the Louvain graph is consistent with a high modularity score, with the negative modularity of Leiden supports the earlier conclusion: Louvain seems more appropriate for revealing community structure in this network.
 
@@ -225,15 +229,19 @@ The ego network of node E13, which has the highest Closeness Centrality in the n
 
 In bipartite networks, event nodes such as E13 achieve high closeness as they act as bridges that connect distant parts of the network. In this case, E13 probably plays an important role as it connects two large parts of the graph via indirect paths. Its centrality does not come from its local connectivity, but from its strategic position in the network. It may serve as an important event that connects actors that would otherwise have no connection.
 
-We can check this with a betweenness centraility, which counts the number of shortest paths that pass through a node: 
+We can check this with a betweenness centraility, which counts the number of shortest paths that pass through a node:
 
 ```{r}
 betweenness(g_undirected)["E13"]
 ```
 
-Suprisingly, we find that E13 has a betweenness centrality of 0,  meaning no shortest paths pass through it, which completely undermines our initial theory. :/ The explanation for this could be that E13 connects indirectly to distant nodes, but isn’t between other nodes in terms of shortest paths. It’s close to them (short paths to many nodes), but not in between them.
+Suprisingly, we find that E13 has a betweenness centrality of 0, meaning no shortest paths pass through it, which completely undermines our initial theory. :/ The explanation for this could be that E13 connects indirectly to distant nodes, but isn’t between other nodes in terms of shortest paths. It’s close to them (short paths to many nodes), but not in between them.
 
-We can try to visualise this. 
+Our theory going down the drain:
+
+![](https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExa2syYndtMXhuczZrZHlrOHo0YjFhNDFvaHkxbHNlbHdqc2ZjbmI5YiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/PGR0vFWdKI6kM/giphy.gif)
+
+We can try to visualise this.
 
 ```{r}
 paths <- shortest_paths(g_undirected, 
@@ -264,7 +272,7 @@ table %>%
 
 The first 32 nodes have a closeness centrality of exactly 1, despite having only one connection. This counterintuitive result points towards the network appearing to be disconnected and fragmented, as these nodes are only connected to one other node in small components. Since no other nodes are reachable from them, their sum of distances is technically 1, resulting in a closeness score of 1 under igraph's calculation.
 
-To avoid this problem, we can try to work with largest connected component, which is typically done with disconnected networks. 
+To avoid this problem, we can try to work with largest connected component, which is typically done with disconnected networks.
 
 ```{r}
 cc <- components(g_undirected)
@@ -287,10 +295,9 @@ diameter(gGC)
 plot(gGC)
 ```
 
-
 This subgraph has 285 nodes and 457 links. When we compare the diameter (largest distance) of our total network (1) with the diameter of our Giant Component (18), we can see that the overall network appears trivially connected due to many isolated pairs of nodes, while the Giant Component reveals the true structural depth and path diversity of the core network.
 
-We can now recalculate and visualise the neighborhood of the node with the largest closeness. 
+We can now recalculate and visualise the neighborhood of the node with the largest closeness.
 
 ```{r}
 closeness_vals_GC <- closeness(gGC, mode = "all")
@@ -302,13 +309,14 @@ plot(ego_graph_GC,
      main = paste("Ego Network of Giant Component Node with Largest Closeness:", top_node_GC))
 ```
 
-The ego network of the node with the highest closeness centrality in the Giant Component shows a strong hub structure. The central node  is directly connected to a large number of other nodes, which are themselves not directly connected to each other. This star-shaped pattern shows that the central node is at a very short distance from many others, resulting in a high closeness score.
+The ego network of the node with the highest closeness centrality in the Giant Component shows a strong hub structure. The central node is directly connected to a large number of other nodes, which are themselves not directly connected to each other. This star-shaped pattern shows that the central node is at a very short distance from many others, resulting in a high closeness score.
 
 In comparison to E13, this node’s centrality is structurally meaningful. It plays a key role in connecting a large portion of the network and minimising the average distance to all other nodes in the Giant Component. In conclusion, this shows that closeness centrality is best interpreted for our network within the largest connected component, where the network's true structure and connectivity are visible.
 
+![](https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExdHV2ZzVlaXhxeGV6MXlleHg1b2tpNjNnc2Z4cmhrZ25oODVraGsweCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/14nWvlsPu3kVHy/giphy.gif){width="320"}
+
 # Conclusion
 
-The analysis reveals that the Abu Sayyaf Group's network is fragmented, decentralized, and strategically structured. A few key nodes concentrate connectivity, while the majority remain peripheral and isolated. This setup, characterized by low local clustering and clearly defined communities, reflects an organization designed to operate securely and remain resilient against detection or disruption. The emerging structure is not random, but rather aligned with an operational model that prioritizes cell isolation and tactical centralization. 
+The analysis reveals that the Abu Sayyaf Group's network is fragmented, decentralized, and strategically structured. A few key nodes concentrate connectivity, while the majority remain peripheral and isolated. This setup, characterized by low local clustering and clearly defined communities, reflects an organization designed to operate securely and remain resilient against detection or disruption. The emerging structure is not random, but rather aligned with an operational model that prioritizes cell isolation and tactical centralization.
 
 Overall, the network demonstrates an internal logic aimed at maintaining operational efficiency under conditions of secrecy.
-
