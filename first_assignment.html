@@ -101,6 +101,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>This project focuses on the analysis of a bipartite network that represents the Abu Sayyaf Group’s involvement in kidnapping events in the Philippines in 2014. The dataset, obtained from the ICON project, links members of the Abu Sayyaf Group with the specific kidnappings they were involved in.</p>
 <p>The goal of this analysis is to explore fundamental network properties, such as node connectivity, degree distribution, and overall structure. These properties will allow us to gain insights into the organizational dynamics of the group, which can be reflected in the network’s topology.</p>
 <p>https://networks.skewed.de/net/kidnappings</p>
+<p>Gerdes, L. M., Ringler, K., &amp; Autin, B. (2014). Assessing the Abu Sayyaf Group’s Strategic and Learning Capacities.&nbsp;<em>Studies in Conflict &amp; Terrorism</em>,&nbsp;<em>37</em>(3), 267–293. https://doi.org/10.1080/1057610X.2014.872021</p>
 <section id="libraries" class="level2">
 <h2 class="anchored" data-anchor-id="libraries">Libraries</h2>
 <div class="cell">
@@ -121,13 +122,34 @@ Attaching package: 'igraph'</code></pre>
     union</code></pre>
 </div>
 <div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(ggplot2)</span>
-<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(ggraph)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(ggraph)</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(dplyr)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>
+Attaching package: 'dplyr'</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>The following objects are masked from 'package:igraph':
+
+    as_data_frame, groups, union</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>The following objects are masked from 'package:stats':
+
+    filter, lag</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>The following objects are masked from 'package:base':
+
+    intersect, setdiff, setequal, union</code></pre>
+</div>
 </div>
 </section>
 <section id="running-code" class="level2">
 <h2 class="anchored" data-anchor-id="running-code">Running Code</h2>
+<p>We load the edges and nodes and create the graph from the data</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>edges <span class="ot">&lt;-</span> <span class="fu">read_csv</span>(<span class="st">"network/edges.csv"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>edges <span class="ot">&lt;-</span> <span class="fu">read_csv</span>(<span class="st">"network/edges.csv"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stderr">
 <pre><code>Rows: 402 Columns: 2
 ── Column specification ────────────────────────────────────────────────────────
@@ -137,7 +159,17 @@ dbl (2): # source, target
 ℹ Use `spec()` to retrieve the full column specification for this data.
 ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.</code></pre>
 </div>
-<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>nodes <span class="ot">&lt;-</span> <span class="fu">read_csv</span>(<span class="st">"network/nodes.csv"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(edges, <span class="dv">4</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 4 × 2
+  `# source` target
+       &lt;dbl&gt;  &lt;dbl&gt;
+1        105     22
+2        105     32
+3        105     40
+4        105     41</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>nodes <span class="ot">&lt;-</span> <span class="fu">read_csv</span>(<span class="st">"network/nodes.csv"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stderr">
 <pre><code>Rows: 351 Columns: 3
 ── Column specification ────────────────────────────────────────────────────────
@@ -148,36 +180,81 @@ dbl (1): # index
 ℹ Use `spec()` to retrieve the full column specification for this data.
 ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.</code></pre>
 </div>
-<div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="co">#Buiding a graph from data</span></span>
-<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>g <span class="ot">&lt;-</span> <span class="fu">graph_from_data_frame</span>(<span class="at">d =</span> edges, <span class="at">vertices =</span> nodes, <span class="at">directed =</span> <span class="cn">TRUE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb16"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(nodes, <span class="dv">4</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 4 × 3
+  `# index` name  `_pos`                           
+      &lt;dbl&gt; &lt;chr&gt; &lt;chr&gt;                            
+1         0 E1    array([ 4.69721231, -2.0472666 ])
+2         1 E2    array([ 4.44806661, -2.97223624])
+3         2 E3    array([ 2.6345862 , -4.90967325])
+4         3 E4    array([ 4.28686718, -2.24611971])</code></pre>
 </div>
-<p>Analyze the network by answer the following questions:</p>
+<div class="sourceCode cell-code" id="cb18"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Buiding a graph from data</span></span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>g <span class="ot">&lt;-</span> <span class="fu">graph_from_data_frame</span>(<span class="at">d =</span> edges, <span class="at">vertices =</span> nodes, <span class="at">directed =</span> <span class="cn">TRUE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="questions" class="level2">
+<h2 class="anchored" data-anchor-id="questions">Questions</h2>
 <section id="what-is-the-number-of-nodes-and-links" class="level3">
 <h3 class="anchored" data-anchor-id="what-is-the-number-of-nodes-and-links"><em>1. What is the number of nodes and links?</em></h3>
+<p>Nodes and links are also called vertices and edges. We can check their count with tables or by asking directly for their number:</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="fu">vcount</span>(g)<span class="co">#Nodes = Vertices </span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb19"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="co"># links/edges</span></span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a><span class="fu">E</span>(g) </span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>[1] 351</code></pre>
+<pre><code>+ 402/402 edges from bf36d67 (vertex names):
+ [1] N1 -&gt;E23 N1 -&gt;E33 N1 -&gt;E41 N1 -&gt;E42 N1 -&gt;E44 N2 -&gt;E23 N2 -&gt;E33 N3 -&gt;E6 
+ [9] N3 -&gt;E9  N3 -&gt;E10 N3 -&gt;E14 N3 -&gt;E19 N3 -&gt;E25 N3 -&gt;E28 N3 -&gt;E31 N3 -&gt;E32
+[17] N4 -&gt;E1  N4 -&gt;E30 N4 -&gt;E34 N5 -&gt;E1  N5 -&gt;E2  N5 -&gt;E4  N5 -&gt;E8  N6 -&gt;E8 
+[25] N6 -&gt;E9  N6 -&gt;E10 N6 -&gt;E11 N7 -&gt;E4  N7 -&gt;E8  N8 -&gt;E8  N9 -&gt;E4  N9 -&gt;E12
+[33] N9 -&gt;E30 N9 -&gt;E39 N10-&gt;E26 N10-&gt;E32 N10-&gt;E41 N10-&gt;E42 N10-&gt;E43 N10-&gt;E65
+[41] N10-&gt;E79 N11-&gt;E3  N12-&gt;E3  N13-&gt;E32 N13-&gt;E35 N13-&gt;E67 N14-&gt;E3  N15-&gt;E3 
+[49] N16-&gt;E3  N17-&gt;E6  N18-&gt;E27 N18-&gt;E35 N19-&gt;E6  N19-&gt;E9  N19-&gt;E12 N19-&gt;E25
+[57] N19-&gt;E29 N19-&gt;E32 N20-&gt;E6  N21-&gt;E30 N22-&gt;E27 N23-&gt;E27 N23-&gt;E30 N23-&gt;E35
+[65] N24-&gt;E10 N25-&gt;E10 N26-&gt;E12 N27-&gt;E8  N27-&gt;E35 N28-&gt;E13 N29-&gt;E17 N29-&gt;E19
+[73] N29-&gt;E20 N30-&gt;E17 N31-&gt;E19 N32-&gt;E19 N32-&gt;E28 N32-&gt;E32 N33-&gt;E18 N34-&gt;E18
++ ... omitted several edges</code></pre>
 </div>
-<div class="sourceCode cell-code" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ecount</span>(g)<span class="co">#Links = Edges </span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb21"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ecount</span>(g) </span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>[1] 402</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb23"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="co"># nodes/vertices</span></span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a><span class="fu">V</span>(g) </span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>+ 351/351 vertices, named, from bf36d67:
+  [1] E1   E2   E3   E4   E5   E6   E7   E8   E9   E10  E11  E12  E13  E14  E15 
+ [16] E16  E17  E18  E19  E20  E21  E22  E23  E24  E25  E26  E27  E28  E29  E30 
+ [31] E31  E32  E33  E34  E35  E36  E37  E38  E39  E40  E41  E42  E43  E44  E45 
+ [46] E46  E47  E48  E49  E50  E51  E52  E53  E54  E55  E56  E57  E58  E59  E60 
+ [61] E61  E62  E63  E64  E65  E66  E67  E68  E69  E70  E71  E72  E73  E74  E75 
+ [76] E76  E77  E78  E79  E80  E81  E82  E83  E84  E85  E86  E87  E88  E89  E90 
+ [91] E91  E92  E93  E94  E95  E96  E97  E98  E99  E100 E101 E102 E103 E104 E105
+[106] N1   N2   N3   N4   N5   N6   N7   N8   N9   N10  N11  N12  N13  N14  N15 
+[121] N16  N17  N18  N19  N20  N21  N22  N23  N24  N25  N26  N27  N28  N29  N30 
+[136] N31  N32  N33  N34  N35  N36  N37  N38  N39  N40  N41  N42  N43  N44  N45 
++ ... omitted several vertices</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb25"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="fu">vcount</span>(g) </span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 351</code></pre>
 </div>
 </div>
 <p>Our dataset has 402 links and 351 nodes</p>
 </section>
 <section id="what-is-the-average-degree-in-the-network-and-the-standard-deviation-of-the-degree" class="level3">
 <h3 class="anchored" data-anchor-id="what-is-the-average-degree-in-the-network-and-the-standard-deviation-of-the-degree"><em>2. What is the average degree in the network? And the standard deviation of the degree?</em></h3>
-<p>To calculate the average degree and standard deviation, we can use the degree values obtained from the following code:</p>
+<p>To calculate the average degree and standard deviation of nodes, we can use the degree values obtained from the following code:</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>deg <span class="ot">&lt;-</span> <span class="fu">degree</span>(g,<span class="at">mode=</span><span class="st">"all"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb27"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a>deg <span class="ot">&lt;-</span> <span class="fu">degree</span>(g,<span class="at">mode=</span><span class="st">"all"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb16"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="fu">mean</span>(deg)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb28"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a><span class="fu">mean</span>(deg)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>[1] 2.290598</code></pre>
 </div>
-<div class="sourceCode cell-code" id="cb18"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="fu">sd</span>(deg)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb30"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a><span class="fu">sd</span>(deg)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>[1] 3.885636</code></pre>
 </div>
@@ -187,8 +264,10 @@ dbl (1): # index
 <section id="plot-the-degree-distribution-in-linear-linear-scale-and-in-log-log-scale.-does-it-have-a-typical-connectivity-what-is-the-degree-of-the-most-connected-node" class="level3">
 <h3 class="anchored" data-anchor-id="plot-the-degree-distribution-in-linear-linear-scale-and-in-log-log-scale.-does-it-have-a-typical-connectivity-what-is-the-degree-of-the-most-connected-node"><em>3. Plot the degree distribution in linear-linear scale and in log-log-scale. Does it have a typical connectivity? What is the degree of the most connected node?</em></h3>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb20"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="co">#linear-linear</span></span>
-<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>() <span class="sc">+</span> <span class="fu">geom_histogram</span>(<span class="fu">aes</span>(<span class="at">x=</span><span class="fu">degree</span>(g,<span class="at">mode=</span><span class="st">"all"</span>))) <span class="sc">+</span> <span class="fu">labs</span>(<span class="at">x=</span><span class="st">"Degree"</span>,<span class="at">y=</span><span class="st">"Density"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb32"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a><span class="co"># linear-linear</span></span>
+<span id="cb32-2"><a href="#cb32-2" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>() <span class="sc">+</span> </span>
+<span id="cb32-3"><a href="#cb32-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_histogram</span>(<span class="fu">aes</span>(<span class="at">x=</span><span class="fu">degree</span>(g,<span class="at">mode=</span><span class="st">"all"</span>))) <span class="sc">+</span> </span>
+<span id="cb32-4"><a href="#cb32-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">x=</span><span class="st">"Degree"</span>,<span class="at">y=</span><span class="st">"Density"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stderr">
 <pre><code>`stat_bin()` using `bins = 30`. Pick better value with `binwidth`.</code></pre>
 </div>
@@ -199,21 +278,40 @@ dbl (1): # index
 </figure>
 </div>
 </div>
-<div class="sourceCode cell-code" id="cb22"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a>max_degree_node <span class="ot">&lt;-</span> <span class="fu">which.max</span>(deg)</span>
-<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a>deg[max_degree_node]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb34"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb34-1"><a href="#cb34-1" aria-hidden="true" tabindex="-1"></a><span class="co"># table of degrees </span></span>
+<span id="cb34-2"><a href="#cb34-2" aria-hidden="true" tabindex="-1"></a>table_deg <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(deg)</span>
+<span id="cb34-3"><a href="#cb34-3" aria-hidden="true" tabindex="-1"></a>table_deg <span class="sc">%&gt;%</span> </span>
+<span id="cb34-4"><a href="#cb34-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(<span class="fu">desc</span>(deg)) <span class="sc">%&gt;%</span> </span>
+<span id="cb34-5"><a href="#cb34-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">head</span>(<span class="dv">10</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>     deg
+E35   58
+E30   23
+E27   17
+N103  16
+E32   15
+E65   12
+E39   11
+E81   11
+N127  11
+E84   10</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb36"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb36-1"><a href="#cb36-1" aria-hidden="true" tabindex="-1"></a><span class="co"># max degree node </span></span>
+<span id="cb36-2"><a href="#cb36-2" aria-hidden="true" tabindex="-1"></a>max_degree_node <span class="ot">&lt;-</span> <span class="fu">which.max</span>(deg)</span>
+<span id="cb36-3"><a href="#cb36-3" aria-hidden="true" tabindex="-1"></a>deg[max_degree_node]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>E35 
  58 </code></pre>
 </div>
 </div>
-<p>The histogram illustrates the distribution of node degrees within the network, showing how many connections each node has. From the distribution, it’s clear that the vast majority of nodes have a very low degree, typically around 1 or 2 connections: most nodes are minimally connected, indicating a sparse network structure. However, the histogram also reveals a long right tail, meaning that while most nodes are weakly connected, a small number of nodes have a significantly higher degree — some with 20, 40, or even 58 connections, the degree of the most connected node. This pattern suggests a right-skewed or heavy-tailed distribution, where a few highly connected nodes coexist with many low-degree nodes.</p>
+<p>The histogram illustrates the distribution of node degrees within the network, showing how many connections each node has. From the distribution, it’s clear that the vast majority of nodes have a very low degree, typically around 1 or 2 connections: most nodes are minimally connected, indicating a sparse network structure. However, the histogram also reveals a long right tail, meaning that while most nodes are weakly connected, a small number of nodes have a significantly higher degree. The most connected node has 58 connections, with a in comparison way lower second most connected node with 23 connections. Still, in comparison to one or two connections that is quite high. The following eight most connected nodes are around the 17 to 10 connections marks. This pattern suggests a right-skewed or heavy-tailed distribution, where a few highly connected nodes coexist with many low-degree nodes, which would indicate a power-law distribution.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb24"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="co">#log</span></span>
-<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>() <span class="sc">+</span> </span>
-<span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_histogram</span>(<span class="fu">aes</span>(<span class="at">x=</span><span class="fu">degree</span>(g, <span class="at">mode=</span><span class="st">"all"</span>))) <span class="sc">+</span> </span>
-<span id="cb24-4"><a href="#cb24-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_x_log10</span>() <span class="sc">+</span> </span>
-<span id="cb24-5"><a href="#cb24-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_y_log10</span>() <span class="sc">+</span> </span>
-<span id="cb24-6"><a href="#cb24-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">x=</span><span class="st">"Degree (log scale)"</span>, <span class="at">y=</span><span class="st">"Density (log scale)"</span>) </span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb38"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb38-1"><a href="#cb38-1" aria-hidden="true" tabindex="-1"></a><span class="co"># log-log</span></span>
+<span id="cb38-2"><a href="#cb38-2" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>() <span class="sc">+</span> </span>
+<span id="cb38-3"><a href="#cb38-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_histogram</span>(<span class="fu">aes</span>(<span class="at">x=</span><span class="fu">degree</span>(g, <span class="at">mode=</span><span class="st">"all"</span>))) <span class="sc">+</span> </span>
+<span id="cb38-4"><a href="#cb38-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_x_log10</span>() <span class="sc">+</span> </span>
+<span id="cb38-5"><a href="#cb38-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_y_log10</span>() <span class="sc">+</span> </span>
+<span id="cb38-6"><a href="#cb38-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">x=</span><span class="st">"Degree (log scale)"</span>, <span class="at">y=</span><span class="st">"Density (log scale)"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stderr">
 <pre><code>`stat_bin()` using `bins = 30`. Pick better value with `binwidth`.</code></pre>
 </div>
@@ -232,75 +330,108 @@ dbl (1): # index
 </div>
 </div>
 </div>
-<p>While the linear-linear histogram highlights the skewed distribution of node degrees and the presence of a few highly connected hubs, the log-log plot offers a deeper view into the scaling behavior of the network. By transforming both axes logarithmically, the log-log visualization makes it easier to detect whether the degree distribution follows a power-law, which is often indicative of a scale-free network.</p>
-<p>In this plot, the degree distribution appears to align roughly along a straight line in the log-log space, especially in the tail. This pattern supports the idea that the network may be scale-free, where a small number of nodess dominate the connectivity, and the probability of a node having a high degree decreases polynomially rather than exponentially.</p>
-<p>These nodes, the few ones that are highly connected, can play a crucial role in the flow of information, connectivity, and resilience of the network. Their presence may also influence the network’s vulnerability — if one of them fails or is removed, it could significantly disrupt the system.</p>
+<p>While with the linear-linear histogram we can observe the skewed distribution of node degrees and the presence of a few highly connected hubs, with the log-log plot we get a better view into the scaling behavior of the network. This plot is created simply by transforming both axes with a common logarithm.</p>
+<p>In this plot, the degree distribution appears to align roughly along a straight line in the log-log space. This pattern supports the idea that the degree distribution follows a power-law and hence the network may be scale-free, where a small number of nodes dominate the connectivity, and the probability of a node having a high degree decreases polynomially rather than exponentially.</p>
+<p>The few nodes that are highly connected can play a crucial role in the flow of information, connectivity, and resilience of the network. Their presence may also influence the network’s vulnerability as if one of them fails or is removed, it could significantly disrupt the system.</p>
 </section>
 <section id="what-is-the-clustering-coefficient-transitivity-in-the-network" class="level3">
 <h3 class="anchored" data-anchor-id="what-is-the-clustering-coefficient-transitivity-in-the-network"><em>4. What is the clustering coefficient (transitivity) in the network?</em></h3>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb28"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a><span class="fu">transitivity</span>(g)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb42"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb42-1"><a href="#cb42-1" aria-hidden="true" tabindex="-1"></a><span class="fu">transitivity</span>(g)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>[1] 0</code></pre>
 </div>
 </div>
-<p>The global clustering coefficient (transitivity) of the network is 0, which means that there are no closed triplets — in other words, there are no triangles where three nodes are all directly connected to each other. This suggests that the network is not clustered at all, and that nodes tend to connect in a more tree-like or chain-like structure rather than forming tightly knit groups. Such a result indicates a network with no local cohesion, where neighbors of a node are almost never connected to each other.</p>
-<p>This result is significant in the context of Abu Sayyaf operations: while limiting collaboration, enhances the group’s resilience against infiltration.</p>
+<p>The global clustering coefficient (transitivity) of the network is 0, which means that there are no closed triplets, i.e.&nbsp;there are no triangles where three nodes are all directly connected to each other. This suggests that the network is not clustered at all, and that nodes tend to connect in a more tree-like or chain-like structure rather than forming triangleness with tightly knit groups. Such a result indicates a network with no local cohesion, where neighbors of a node are actually never connected to each other.</p>
+<p>This result is significant in the context of Abu Sayyaf operations: while limiting collaboration, enhances the group’s resilience against infiltration as each actor is only connected to a “superior” agent.</p>
 </section>
 <section id="what-is-the-assortativity-degree-in-the-network" class="level3">
 <h3 class="anchored" data-anchor-id="what-is-the-assortativity-degree-in-the-network"><em>5. What is the assortativity (degree) in the network?</em></h3>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb30"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a><span class="fu">assortativity_degree</span>(g)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb44"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb44-1"><a href="#cb44-1" aria-hidden="true" tabindex="-1"></a><span class="fu">assortativity_degree</span>(g)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>[1] -0.2336613</code></pre>
 </div>
 </div>
-<p>The assortativity coefficient based on node degree is -0.23, indicating a moderate negative assortativity in the network. This means that nodes with a high degree tend to connect more often with nodes that have a low degree, rather than with other highly connected nodes.</p>
-<p>This reflects a centralized structure, where a few key figures are repeatedly involved across many separate events, while most events involve only a small number of actors.</p>
-<p>In this kind of criminal or militant network, such disassortative mixing can imply a strategic effort to decentralize risk, where central figures maintain influence across various operations without necessarily linking collaborators directly to each other — reducing traceability and limiting exposure in case of capture.</p>
+<p>The assortativity coefficient based on node degree is -0.23, indicating a moderate negative assortativity in the network, where nodes with a high degree tend to connect to nodes with low degree, rather than to other hubs. It seems that in this network the highly connected nods serve as bridges that link many less connected nodes.</p>
+<p>Disassortative mixing by degree is normally a pattern found in fictional or artificial networks, which makes it very interesting that it formed here naturally. It reflects a centralized structure where a few key figures repeatedly appear across many separate events, while most events involve only a small number of actors. Hence, for a criminal or militant network it would imply a strategic effort to decentralize risk: central figures maintain influence across various operations without necessarily linking collaborators directly to each other, which may reduce traceability and limit network exposure in case of capture.</p>
 </section>
 <section id="using-the-louvain-method-does-the-network-have-a-community-structure-if-so-what-is-its-modularity" class="level3">
 <h3 class="anchored" data-anchor-id="using-the-louvain-method-does-the-network-have-a-community-structure-if-so-what-is-its-modularity"><em>6. Using the Louvain method, does the network have a community structure? If so, what is its modularity?</em></h3>
+<p>To investigate the structure of the network, we used both the Leiden and Louvain methods.</p>
+<p>To use the Louvain algorithm, it is important that we transform our directed network into an undirected network, as it is only designed for undirected networks. We also use the Leiden method as it similar to the Louvain algorithm but works faster (which is not necessary here with our small network but it is still interesting to compare. )</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb32"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a>g_undirected <span class="ot">&lt;-</span> <span class="fu">as.undirected</span>(g, <span class="at">mode =</span> <span class="st">"collapse"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb46"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb46-1"><a href="#cb46-1" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">123</span>)</span>
+<span id="cb46-2"><a href="#cb46-2" aria-hidden="true" tabindex="-1"></a>g_undirected <span class="ot">&lt;-</span> <span class="fu">as.undirected</span>(g, <span class="at">mode =</span> <span class="st">"collapse"</span>) </span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stderr">
 <pre><code>Warning: `as.undirected()` was deprecated in igraph 2.1.0.
 ℹ Please use `as_undirected()` instead.</code></pre>
 </div>
-<div class="sourceCode cell-code" id="cb34"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb34-1"><a href="#cb34-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Louvain</span></span>
-<span id="cb34-2"><a href="#cb34-2" aria-hidden="true" tabindex="-1"></a>louv <span class="ot">&lt;-</span> <span class="fu">cluster_louvain</span>(g_undirected)</span>
-<span id="cb34-3"><a href="#cb34-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb34-4"><a href="#cb34-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Leiden</span></span>
-<span id="cb34-5"><a href="#cb34-5" aria-hidden="true" tabindex="-1"></a>leid <span class="ot">&lt;-</span> <span class="fu">cluster_leiden</span>(g_undirected)</span>
-<span id="cb34-6"><a href="#cb34-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb34-7"><a href="#cb34-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Community counts</span></span>
-<span id="cb34-8"><a href="#cb34-8" aria-hidden="true" tabindex="-1"></a><span class="fu">length</span>(<span class="fu">sizes</span>(louv))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb48"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb48-1"><a href="#cb48-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Louvain</span></span>
+<span id="cb48-2"><a href="#cb48-2" aria-hidden="true" tabindex="-1"></a>louv <span class="ot">&lt;-</span> <span class="fu">cluster_louvain</span>(g_undirected)</span>
+<span id="cb48-3"><a href="#cb48-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb48-4"><a href="#cb48-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Leiden</span></span>
+<span id="cb48-5"><a href="#cb48-5" aria-hidden="true" tabindex="-1"></a>leid <span class="ot">&lt;-</span> <span class="fu">cluster_leiden</span>(g_undirected)</span>
+<span id="cb48-6"><a href="#cb48-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb48-7"><a href="#cb48-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Community counts</span></span>
+<span id="cb48-8"><a href="#cb48-8" aria-hidden="true" tabindex="-1"></a><span class="fu">length</span>(<span class="fu">sizes</span>(louv)) <span class="co"># length(louv) also works</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>[1] 37</code></pre>
+<pre><code>[1] 36</code></pre>
 </div>
-<div class="sourceCode cell-code" id="cb36"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb36-1"><a href="#cb36-1" aria-hidden="true" tabindex="-1"></a><span class="fu">length</span>(<span class="fu">sizes</span>(leid))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb50"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb50-1"><a href="#cb50-1" aria-hidden="true" tabindex="-1"></a><span class="fu">length</span>(<span class="fu">sizes</span>(leid))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>[1] 351</code></pre>
 </div>
-</div>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb38"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb38-1"><a href="#cb38-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Modularity</span></span>
-<span id="cb38-2"><a href="#cb38-2" aria-hidden="true" tabindex="-1"></a><span class="fu">modularity</span>(g_undirected, <span class="fu">membership</span>(louv))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb52"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb52-1"><a href="#cb52-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Modularity</span></span>
+<span id="cb52-2"><a href="#cb52-2" aria-hidden="true" tabindex="-1"></a><span class="fu">modularity</span>(g_undirected, <span class="fu">membership</span>(louv))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>[1] 0.7873629</code></pre>
+<pre><code>[1] 0.7910448</code></pre>
 </div>
-<div class="sourceCode cell-code" id="cb40"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb40-1"><a href="#cb40-1" aria-hidden="true" tabindex="-1"></a><span class="fu">modularity</span>(g_undirected, <span class="fu">membership</span>(leid))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb54"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb54-1"><a href="#cb54-1" aria-hidden="true" tabindex="-1"></a><span class="fu">modularity</span>(g_undirected, <span class="fu">membership</span>(leid))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>[1] -0.01102386</code></pre>
 </div>
 </div>
-<p>To investigate the organization of the network, we used both the Leiden and Louvain methods.The Louvain method identified 35 communities with a modularity score of 0.786, indicating a strong community structure. The high modularity suggests that the network contains several groups of nodes that are more densely connected internally than externally— which can be interpreted as meaningful substructures.</p>
-<p>The Leiden algorithm, on the other hand, detected 351 communities, corresponding to the total number of nodes in the network. The modularity score of −0.011indicates that this partition is worse than random, and&nbsp;no significant structural groupings were identified.</p>
-<p>Overall, we conclude that the Louvain method is better suited for detecting structural patterns in the Abu Sayyaf network.</p>
+<p>The Louvain method identified ca. 36 communities with a high modularity score of 0.791, indicating a strong community structure. The high modularity suggests that the network contains nodes that are more densely connected within communities than between them, i.e.&nbsp;more densely connected internally than externally, which can be interpreted as meaningful substructures.</p>
+<p>The Leiden algorithm, on the other hand, detected 351 communities, corresponding to the total number of nodes in the network. The modularity score of −0.011 indicates that this partition is worse than random, and&nbsp;no significant structural groupings were identified.</p>
+<p>Overall, we conclude that the Louvain method seems better suited for detecting structural patterns in the Abu Sayyaf network. To further illustrate the differences between the two methods we visualize them.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb42"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb42-1"><a href="#cb42-1" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">2</span>))</span>
-<span id="cb42-2"><a href="#cb42-2" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(louv, g_undirected, <span class="at">vertex.label =</span> <span class="cn">NA</span>, <span class="at">vertex.size =</span> <span class="dv">5</span>, <span class="at">main =</span> <span class="st">"Louvain Communities"</span>)</span>
-<span id="cb42-3"><a href="#cb42-3" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(leid, g_undirected, <span class="at">vertex.label =</span> <span class="cn">NA</span>, <span class="at">vertex.size =</span> <span class="dv">5</span>, <span class="at">main =</span> <span class="st">"Leiden Communities"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb56"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb56-1"><a href="#cb56-1" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">2</span>))</span>
+<span id="cb56-2"><a href="#cb56-2" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(louv, g_undirected, </span>
+<span id="cb56-3"><a href="#cb56-3" aria-hidden="true" tabindex="-1"></a>     <span class="at">vertex.label =</span> <span class="st">""</span>, <span class="at">vertex.size =</span> <span class="dv">5</span>, <span class="at">main =</span> <span class="st">"Louvain Communities"</span>)</span>
+<span id="cb56-4"><a href="#cb56-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb56-5"><a href="#cb56-5" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(leid, g_undirected, </span>
+<span id="cb56-6"><a href="#cb56-6" aria-hidden="true" tabindex="-1"></a>     <span class="at">vertex.label =</span> <span class="st">""</span>, <span class="at">vertex.size =</span> <span class="dv">5</span>, <span class="at">main =</span> <span class="st">"Leiden Communities"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="first_assignment_files/figure-html/unnamed-chunk-11-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>The Louvain method clearly identifies larger and cohesive community clusters. These groups are visibly well-defined, with nodes that are tightly connected internally and more loosely connected to other communities. In contrast, the Leiden algorithm divides the network into many small, fragmented communities, often consisting of just one or two nodes.</p>
+<p>We can see where the modularity scores come from, as modularity is really a summary statistic of the network’s clustering quality, where the goodness of the partitions are checked. The higher the modularity, the better the description of the network communities are. Hence, the Louvain graph is consistent with a high modularity score, with the negative modularity of Leiden supports the earlier conclusion: Louvain seems more appropriate for revealing community structure in this network.</p>
+</section>
+<section id="test-that-the-clustering-coefficient-in-the-network-cannot-be-statistically-explain-by-a-configuration-model-in-which-the-nodes-have-the-same-degree-distribution-as-the-original." class="level3">
+<h3 class="anchored" data-anchor-id="test-that-the-clustering-coefficient-in-the-network-cannot-be-statistically-explain-by-a-configuration-model-in-which-the-nodes-have-the-same-degree-distribution-as-the-original."><em>7. Test that the clustering coefficient in the network cannot be statistically explain by a configuration model in which the nodes have the same degree distribution as the original.</em></h3>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb57"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb57-1"><a href="#cb57-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Original clustering coefficient (global transitivity)</span></span>
+<span id="cb57-2"><a href="#cb57-2" aria-hidden="true" tabindex="-1"></a>observed_transitivity <span class="ot">&lt;-</span> <span class="fu">transitivity</span>(g)</span>
+<span id="cb57-3"><a href="#cb57-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb57-4"><a href="#cb57-4" aria-hidden="true" tabindex="-1"></a><span class="co"># 100 null models with same degree distribution</span></span>
+<span id="cb57-5"><a href="#cb57-5" aria-hidden="true" tabindex="-1"></a>null_transitivities <span class="ot">&lt;-</span> <span class="fu">replicate</span>(<span class="dv">100</span>, {</span>
+<span id="cb57-6"><a href="#cb57-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">transitivity</span>(<span class="fu">sample_degseq</span>(<span class="fu">degree</span>(g), <span class="at">method =</span> <span class="st">"simple"</span>))</span>
+<span id="cb57-7"><a href="#cb57-7" aria-hidden="true" tabindex="-1"></a>})</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: The `method` argument of `sample_degseq()` must be configuration instead of
+simple as of igraph 2.1.0.</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb59"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb59-1"><a href="#cb59-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Plot of clustering coefficients distribution from null models</span></span>
+<span id="cb59-2"><a href="#cb59-2" aria-hidden="true" tabindex="-1"></a><span class="fu">hist</span>(null_transitivities, </span>
+<span id="cb59-3"><a href="#cb59-3" aria-hidden="true" tabindex="-1"></a>     <span class="at">main =</span> <span class="st">"Null Model Distribution of Clustering Coefficient"</span>,</span>
+<span id="cb59-4"><a href="#cb59-4" aria-hidden="true" tabindex="-1"></a>     <span class="at">xlab =</span> <span class="st">"Clustering Coefficient"</span>, <span class="at">col =</span> <span class="st">"lightblue"</span>, <span class="at">border =</span> <span class="st">"white"</span>)</span>
+<span id="cb59-5"><a href="#cb59-5" aria-hidden="true" tabindex="-1"></a><span class="fu">abline</span>(<span class="at">v =</span> observed_transitivity, <span class="at">col =</span> <span class="st">"red"</span>, <span class="at">lwd =</span> <span class="dv">2</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
 <div>
 <figure class="figure">
@@ -309,74 +440,516 @@ dbl (1): # index
 </div>
 </div>
 </div>
-<p>The visualizations of Louvain and Leiden illustrate the significant differences between the two methods.<br>
-The Louvain method clearly identifies larger and cohesive community clusters. These groups are visibly well-defined, with nodes that are tightly connected internally and more loosely connected to other communities — consistent with the high modularity score. In contrast, the Leiden algorithm divides the network into many small, fragmented communities, often consisting of just one or two nodes. This outcome reflects the negative modularity and supports the earlier conclusion: Louvain is more appropriate for revealing community structure in this network.</p>
-</section>
-<section id="test-that-the-clustering-coefficient-in-the-network-cannot-be-statistically-explain-by-a-configuration-model-in-which-the-nodes-have-the-same-degree-distribution-as-the-original." class="level3">
-<h3 class="anchored" data-anchor-id="test-that-the-clustering-coefficient-in-the-network-cannot-be-statistically-explain-by-a-configuration-model-in-which-the-nodes-have-the-same-degree-distribution-as-the-original."><em>7. Test that the clustering coefficient in the network cannot be statistically explain by a configuration model in which the nodes have the same degree distribution as the original.</em></h3>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb43"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb43-1"><a href="#cb43-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Original clustering coefficient</span></span>
-<span id="cb43-2"><a href="#cb43-2" aria-hidden="true" tabindex="-1"></a>observed_transitivity <span class="ot">&lt;-</span> <span class="fu">transitivity</span>(g)</span>
-<span id="cb43-3"><a href="#cb43-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb43-4"><a href="#cb43-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Generate 100 null models with same degree distribution</span></span>
-<span id="cb43-5"><a href="#cb43-5" aria-hidden="true" tabindex="-1"></a>null_transitivities <span class="ot">&lt;-</span> <span class="fu">replicate</span>(<span class="dv">100</span>, {</span>
-<span id="cb43-6"><a href="#cb43-6" aria-hidden="true" tabindex="-1"></a>  g_null <span class="ot">&lt;-</span> <span class="fu">sample_degseq</span>(<span class="fu">degree</span>(g), <span class="at">method =</span> <span class="st">"simple"</span>)</span>
-<span id="cb43-7"><a href="#cb43-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">transitivity</span>(g_null)</span>
-<span id="cb43-8"><a href="#cb43-8" aria-hidden="true" tabindex="-1"></a>})</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output cell-output-stderr">
-<pre><code>Warning: The `method` argument of `sample_degseq()` must be configuration instead of
-simple as of igraph 2.1.0.</code></pre>
-</div>
-<div class="sourceCode cell-code" id="cb45"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb45-1"><a href="#cb45-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Plot the distribution of clustering coefficients from null models</span></span>
-<span id="cb45-2"><a href="#cb45-2" aria-hidden="true" tabindex="-1"></a><span class="fu">hist</span>(null_transitivities, <span class="at">main =</span> <span class="st">"Null Model Distribution of Clustering Coefficient"</span>,</span>
-<span id="cb45-3"><a href="#cb45-3" aria-hidden="true" tabindex="-1"></a>     <span class="at">xlab =</span> <span class="st">"Clustering Coefficient"</span>, <span class="at">col =</span> <span class="st">"lightblue"</span>, <span class="at">border =</span> <span class="st">"white"</span>)</span>
-<span id="cb45-4"><a href="#cb45-4" aria-hidden="true" tabindex="-1"></a><span class="fu">abline</span>(<span class="at">v =</span> observed_transitivity, <span class="at">col =</span> <span class="st">"red"</span>, <span class="at">lwd =</span> <span class="dv">2</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output-display">
-<div>
-<figure class="figure">
-<p><img src="first_assignment_files/figure-html/unnamed-chunk-13-1.png" class="img-fluid figure-img" width="672"></p>
-</figure>
-</div>
-</div>
-</div>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb46"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb46-1"><a href="#cb46-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Calculate empirical p-value</span></span>
-<span id="cb46-2"><a href="#cb46-2" aria-hidden="true" tabindex="-1"></a>p_value <span class="ot">&lt;-</span> <span class="fu">mean</span>(null_transitivities <span class="sc">&gt;=</span> observed_transitivity)</span>
-<span id="cb46-3"><a href="#cb46-3" aria-hidden="true" tabindex="-1"></a>p_value</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb60"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb60-1"><a href="#cb60-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Empirical p-value</span></span>
+<span id="cb60-2"><a href="#cb60-2" aria-hidden="true" tabindex="-1"></a><span class="fu">mean</span>(null_transitivities <span class="sc">&gt;=</span> observed_transitivity)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>[1] 1</code></pre>
 </div>
 </div>
-<p>The empirical p-value is 1, indicating that none of the 100 networks in the configuration model had as low a clustering coefficient as the original. This means that the lack of clustering in the Abu Sayyaf network is not a statistical error of its degree distribution, but rather a structurally significant feature.</p>
+<p>The empirical p-value is 1, indicating that none of the 100 networks in the configuration model had as low a clustering coefficient as the original, i.e.&nbsp;the actually observed clustering is not higher than expected by chance. This means that the lack of clustering in the Abu Sayyaf network is not a statistical error of its degree distribution, but rather a structurally significant feature that can be fully explained by degree sequence alone.</p>
 <p>Such a pattern suggests intentional decentralization, perhaps to reduce the risk of network detection by closely linked groups. It provides support for the notion of a subdivided cell structure typical of underground organizations.</p>
 </section>
 <section id="visualize-the-neighborhood-of-the-node-with-the-largest-centrality-closeness" class="level3">
 <h3 class="anchored" data-anchor-id="visualize-the-neighborhood-of-the-node-with-the-largest-centrality-closeness"><em>8. Visualize the neighborhood of the node with the largest centrality (closeness)</em></h3>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb48"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb48-1"><a href="#cb48-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Compute closeness centrality</span></span>
-<span id="cb48-2"><a href="#cb48-2" aria-hidden="true" tabindex="-1"></a>closeness_vals <span class="ot">&lt;-</span> <span class="fu">closeness</span>(g, <span class="at">mode =</span> <span class="st">"all"</span>)</span>
-<span id="cb48-3"><a href="#cb48-3" aria-hidden="true" tabindex="-1"></a>top_node <span class="ot">&lt;-</span> <span class="fu">V</span>(g)[<span class="fu">which.max</span>(closeness_vals)]</span>
-<span id="cb48-4"><a href="#cb48-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb48-5"><a href="#cb48-5" aria-hidden="true" tabindex="-1"></a><span class="co"># Create ego-graph: 1-step neighborhood</span></span>
-<span id="cb48-6"><a href="#cb48-6" aria-hidden="true" tabindex="-1"></a>ego_graph <span class="ot">&lt;-</span> <span class="fu">make_ego_graph</span>(g, <span class="at">order =</span> <span class="dv">1</span>, <span class="at">nodes =</span> top_node)[[<span class="dv">1</span>]]</span>
-<span id="cb48-7"><a href="#cb48-7" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb48-8"><a href="#cb48-8" aria-hidden="true" tabindex="-1"></a><span class="co"># Visualize</span></span>
-<span id="cb48-9"><a href="#cb48-9" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(ego_graph,</span>
-<span id="cb48-10"><a href="#cb48-10" aria-hidden="true" tabindex="-1"></a>     <span class="at">vertex.size =</span> <span class="dv">5</span>,</span>
-<span id="cb48-11"><a href="#cb48-11" aria-hidden="true" tabindex="-1"></a>     <span class="at">vertex.label =</span> <span class="cn">NA</span>,</span>
-<span id="cb48-12"><a href="#cb48-12" aria-hidden="true" tabindex="-1"></a>     <span class="at">edge.arrow.size =</span> <span class="fl">0.4</span>,</span>
-<span id="cb48-13"><a href="#cb48-13" aria-hidden="true" tabindex="-1"></a>     <span class="at">main =</span> <span class="fu">paste</span>(<span class="st">"Ego Network of Node with Highest Closeness:"</span>, top_node<span class="sc">$</span>name))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb62"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb62-1"><a href="#cb62-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Closeness centrality</span></span>
+<span id="cb62-2"><a href="#cb62-2" aria-hidden="true" tabindex="-1"></a>closeness_vals <span class="ot">&lt;-</span> <span class="fu">closeness</span>(g, <span class="at">mode =</span> <span class="st">"all"</span>)</span>
+<span id="cb62-3"><a href="#cb62-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb62-4"><a href="#cb62-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Node with largest closeness centrality</span></span>
+<span id="cb62-5"><a href="#cb62-5" aria-hidden="true" tabindex="-1"></a>top_node <span class="ot">&lt;-</span> <span class="fu">names</span>(<span class="fu">which.max</span>(closeness_vals))</span>
+<span id="cb62-6"><a href="#cb62-6" aria-hidden="true" tabindex="-1"></a>top_node</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "E13"</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb64"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb64-1"><a href="#cb64-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Ego-graph (1 step neighborhood)</span></span>
+<span id="cb64-2"><a href="#cb64-2" aria-hidden="true" tabindex="-1"></a>ego_graph <span class="ot">&lt;-</span> <span class="fu">make_ego_graph</span>(g, <span class="at">order =</span> <span class="dv">1</span>, <span class="at">nodes =</span> top_node)[[<span class="dv">1</span>]]</span>
+<span id="cb64-3"><a href="#cb64-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb64-4"><a href="#cb64-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Plot</span></span>
+<span id="cb64-5"><a href="#cb64-5" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(ego_graph,</span>
+<span id="cb64-6"><a href="#cb64-6" aria-hidden="true" tabindex="-1"></a>     <span class="at">main =</span> <span class="fu">paste</span>(<span class="st">"Ego Network of Node with Largest Closeness:"</span>, top_node))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="first_assignment_files/figure-html/unnamed-chunk-15-1.png" class="img-fluid figure-img" width="672"></p>
+<p><img src="first_assignment_files/figure-html/unnamed-chunk-14-1.png" class="img-fluid figure-img" width="672"></p>
 </figure>
 </div>
 </div>
 </div>
-<p>The ego network of node E13, which has the highest Closeness Centrality in the network, shows a very loose structure as it only connects to one other node. Closeness normally indicates that a node is “close” to many others. However, in bipartite networks, event nodes such as E13 achieve high closeness if they act as bridges between distant parts of the network. In this case, E13 probably plays an important role as it connects two large parts of the graph via indirect paths. Its centrality does not come from its local connectivity, but from its strategic position in the network. It may serve as an important event that connects actors that would otherwise have no connection.</p>
+<p>The ego network of node E13, which has the highest Closeness Centrality in the network, shows a very loose structure as it only connects to one other node. Closeness centraility indicates how “close” a node is to all others in terms of the shortest paths. It measures global position, not local connectivity, hence a node does not require many direct links but that it simply sits at the shortest distance from the rest.</p>
+<p>In bipartite networks, event nodes such as E13 achieve high closeness as they act as bridges that connect distant parts of the network. In this case, E13 probably plays an important role as it connects two large parts of the graph via indirect paths. Its centrality does not come from its local connectivity, but from its strategic position in the network. It may serve as an important event that connects actors that would otherwise have no connection.</p>
+<p>We can check this with a betweenness centraility, which counts the number of shortest paths that pass through a node:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb65"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb65-1"><a href="#cb65-1" aria-hidden="true" tabindex="-1"></a><span class="fu">betweenness</span>(g_undirected)[<span class="st">"E13"</span>]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>E13 
+  0 </code></pre>
+</div>
+</div>
+<p>Suprisingly, we find that E13 has a betweenness centrality of 0, meaning no shortest paths pass through it, which completely undermines our initial theory. :/ The explanation for this could be that E13 connects indirectly to distant nodes, but isn’t between other nodes in terms of shortest paths. It’s close to them (short paths to many nodes), but not in between them.</p>
+<p>We can try to visualise this.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb67"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb67-1"><a href="#cb67-1" aria-hidden="true" tabindex="-1"></a>paths <span class="ot">&lt;-</span> <span class="fu">shortest_paths</span>(g_undirected, </span>
+<span id="cb67-2"><a href="#cb67-2" aria-hidden="true" tabindex="-1"></a>                        <span class="at">from =</span> <span class="st">"E13"</span>, <span class="at">to =</span> <span class="fu">V</span>(g_undirected), </span>
+<span id="cb67-3"><a href="#cb67-3" aria-hidden="true" tabindex="-1"></a>                        <span class="at">output =</span> <span class="st">"vpath"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning in shortest_paths(g_undirected, from = "E13", to = V(g_undirected), :
+At vendor/cigraph/src/paths/unweighted.c:444 : Couldn't reach some vertices.</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb69"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb69-1"><a href="#cb69-1" aria-hidden="true" tabindex="-1"></a>subg <span class="ot">&lt;-</span> <span class="fu">induced_subgraph</span>(g_undirected, <span class="at">vids =</span> <span class="fu">unique</span>(<span class="fu">unlist</span>(paths<span class="sc">$</span>vpath)))</span>
+<span id="cb69-2"><a href="#cb69-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb69-3"><a href="#cb69-3" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(subg, </span>
+<span id="cb69-4"><a href="#cb69-4" aria-hidden="true" tabindex="-1"></a>     <span class="at">main =</span> <span class="st">"Indirect connections from E13"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="first_assignment_files/figure-html/unnamed-chunk-16-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>However, this result raises suspicion about the structure of the overall network. If E13 truly had indirect connections to many distant nodes, we would expect the visualised subgraph to include more than one neighbour but the graph actually reveals just a single connection. E13 may not actually be part of a well-connected structure, but instead exists in a small, disconnected fragment of the graph. Hence it might be one of the lower-level agents of the pirate network.</p>
+<p>To understand what is actually going on, we examine closeness centrality scores across all nodes to see whether this pattern is isolated or part of a broader issue in the network structure.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb70"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb70-1"><a href="#cb70-1" aria-hidden="true" tabindex="-1"></a>btw <span class="ot">&lt;-</span> <span class="fu">betweenness</span>(g_undirected, <span class="at">weights=</span><span class="fu">E</span>(g_undirected)<span class="sc">$</span>value)</span>
+<span id="cb70-2"><a href="#cb70-2" aria-hidden="true" tabindex="-1"></a>cls <span class="ot">&lt;-</span> <span class="fu">closeness</span>(g_undirected)</span>
+<span id="cb70-3"><a href="#cb70-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb70-4"><a href="#cb70-4" aria-hidden="true" tabindex="-1"></a>table <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(deg, btw, cls)</span>
+<span id="cb70-5"><a href="#cb70-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb70-6"><a href="#cb70-6" aria-hidden="true" tabindex="-1"></a>table <span class="sc">%&gt;%</span> </span>
+<span id="cb70-7"><a href="#cb70-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(<span class="fu">desc</span>(cls))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>     deg         btw          cls
+E13    1     0.00000 1.0000000000
+E22    1     0.00000 1.0000000000
+E38    1     0.00000 1.0000000000
+E40    1     0.00000 1.0000000000
+E45    1     0.00000 1.0000000000
+E48    1     0.00000 1.0000000000
+E49    1     0.00000 1.0000000000
+E50    1     0.00000 1.0000000000
+E70    1     0.00000 1.0000000000
+E76    1     0.00000 1.0000000000
+E80    1     0.00000 1.0000000000
+E82    1     0.00000 1.0000000000
+E88    1     0.00000 1.0000000000
+E92    1     0.00000 1.0000000000
+E93    1     0.00000 1.0000000000
+E95    1     0.00000 1.0000000000
+N28    1     0.00000 1.0000000000
+N35    1     0.00000 1.0000000000
+N107   1     0.00000 1.0000000000
+N108   1     0.00000 1.0000000000
+N114   1     0.00000 1.0000000000
+N115   1     0.00000 1.0000000000
+N118   1     0.00000 1.0000000000
+N140   1     0.00000 1.0000000000
+N148   1     0.00000 1.0000000000
+N155   1     0.00000 1.0000000000
+N171   1     0.00000 1.0000000000
+N172   1     0.00000 1.0000000000
+N186   1     0.00000 1.0000000000
+N196   1     0.00000 1.0000000000
+N214   1     0.00000 1.0000000000
+N245   1     0.00000 1.0000000000
+E18    2     1.00000 0.5000000000
+E51    2     1.00000 0.5000000000
+E52    2     1.00000 0.5000000000
+E96    2     1.00000 0.5000000000
+E97    2     1.00000 0.5000000000
+E99    2     1.00000 0.5000000000
+E103   2     1.00000 0.5000000000
+E46    3     3.00000 0.3333333333
+N33    1     0.00000 0.3333333333
+N34    1     0.00000 0.3333333333
+N119   1     0.00000 0.3333333333
+N120   1     0.00000 0.3333333333
+N121   1     0.00000 0.3333333333
+N122   1     0.00000 0.3333333333
+N183   1     0.00000 0.3333333333
+N204   1     0.00000 0.3333333333
+N205   1     0.00000 0.3333333333
+N206   1     0.00000 0.3333333333
+N207   1     0.00000 0.3333333333
+N208   1     0.00000 0.3333333333
+N210   1     0.00000 0.3333333333
+N246   1     0.00000 0.3333333333
+N109   1     0.00000 0.2000000000
+N110   1     0.00000 0.2000000000
+N111   1     0.00000 0.2000000000
+E98    5     9.00000 0.0833333333
+E100   5     9.00000 0.0833333333
+N199   3    12.20000 0.0769230769
+N200   2     0.20000 0.0588235294
+N201   2     0.20000 0.0588235294
+N202   2     0.20000 0.0588235294
+N203   2     0.20000 0.0588235294
+E56    2     7.00000 0.0555555556
+N124   1     0.00000 0.0400000000
+E35   58 22230.21187 0.0009337068
+N41    4 16044.95794 0.0008880995
+N43    3  1793.78694 0.0008347245
+N92    4  2072.26478 0.0008347245
+N13    3  3299.28633 0.0008319468
+E65   12  6195.73556 0.0008312552
+N82    2  1091.28633 0.0008210181
+N230   2  1091.28633 0.0008210181
+E104   4 14906.56491 0.0008006405
+E32   15 10400.70417 0.0007942812
+N10    7  4567.45121 0.0007886435
+N130   3  1416.28908 0.0007886435
+N48    3  1251.98003 0.0007849294
+N23    3   535.14131 0.0007704160
+N36    3   535.14131 0.0007704160
+N212   3   581.32335 0.0007668712
+N44    2   336.12926 0.0007610350
+N50    2   336.12926 0.0007610350
+N94    2   336.12926 0.0007610350
+N229   2   336.12926 0.0007610350
+N27    2  1589.97712 0.0007541478
+N85    3   427.33080 0.0007541478
+N18    2   134.48382 0.0007496252
+N73    2   134.48382 0.0007496252
+N75    2   134.48382 0.0007496252
+N76    2   134.48382 0.0007496252
+N77    2   134.48382 0.0007496252
+N78    2   134.48382 0.0007496252
+N79    2   134.48382 0.0007496252
+N97    2   197.94687 0.0007496252
+N174   2   197.94687 0.0007496252
+N83    2   208.90782 0.0007440476
+N180   2   208.90782 0.0007440476
+N38    2   843.00000 0.0007418398
+N39    1     0.00000 0.0007385524
+N40    1     0.00000 0.0007385524
+N51    1     0.00000 0.0007385524
+N65    1     0.00000 0.0007385524
+N69    1     0.00000 0.0007385524
+N139   1     0.00000 0.0007385524
+N182   1     0.00000 0.0007385524
+N198   1     0.00000 0.0007385524
+N215   1     0.00000 0.0007385524
+N216   1     0.00000 0.0007385524
+N217   1     0.00000 0.0007385524
+N218   1     0.00000 0.0007385524
+N219   1     0.00000 0.0007385524
+N220   1     0.00000 0.0007385524
+N221   1     0.00000 0.0007385524
+N222   1     0.00000 0.0007385524
+N223   1     0.00000 0.0007385524
+N224   1     0.00000 0.0007385524
+N225   1     0.00000 0.0007385524
+N226   1     0.00000 0.0007385524
+N227   1     0.00000 0.0007385524
+N228   1     0.00000 0.0007385524
+N231   1     0.00000 0.0007385524
+N232   1     0.00000 0.0007385524
+N233   1     0.00000 0.0007385524
+N234   1     0.00000 0.0007385524
+N235   1     0.00000 0.0007385524
+N236   1     0.00000 0.0007385524
+N238   1     0.00000 0.0007385524
+E41    6  1987.12700 0.0007304602
+N103  16 15732.85521 0.0007267442
+E69    3   815.81649 0.0007230658
+E42    5  1275.97277 0.0007199424
+E27   17  2033.31229 0.0007127584
+N3     9  5336.41390 0.0007062147
+E30   23  4006.84545 0.0007037298
+N19    6  3818.73711 0.0006973501
+E39   11  1563.80320 0.0006958942
+N37    6  1623.93140 0.0006849315
+N66    4   852.92620 0.0006839945
+N113   5  1188.10447 0.0006821282
+E67    8  1960.00000 0.0006798097
+E47    1     0.00000 0.0006752194
+N68    2   315.76079 0.0006747638
+N32    3   701.53844 0.0006729475
+N131   1     0.00000 0.0006729475
+N132   1     0.00000 0.0006729475
+N133   1     0.00000 0.0006729475
+N134   1     0.00000 0.0006729475
+N135   1     0.00000 0.0006729475
+N136   1     0.00000 0.0006729475
+N197   1     0.00000 0.0006729475
+E8     6  1713.87963 0.0006653360
+N141   3  1165.98154 0.0006631300
+N9     4  1221.46151 0.0006553080
+N117   2   283.00000 0.0006535948
+N211   1     0.00000 0.0006527415
+E79    4  1402.00000 0.0006489293
+N213   1     0.00000 0.0006485084
+N239   1     0.00000 0.0006485084
+N240   1     0.00000 0.0006485084
+E26    2   283.00000 0.0006455778
+E43    1     0.00000 0.0006447453
+E34    6   469.16340 0.0006381621
+E74    8  1651.63083 0.0006341154
+E78    4  1946.15279 0.0006277464
+E55    2   105.74370 0.0006269592
+E19    4  2065.58054 0.0006261741
+E71    5  1405.70151 0.0006261741
+E75    4  1109.15279 0.0006253909
+E63    3   826.15279 0.0006246096
+N55    2    64.52824 0.0006203474
+N72    2    64.52824 0.0006203474
+E6     5  4360.69047 0.0006199628
+N1     5  1686.18981 0.0006180470
+E54    6  1474.02149 0.0006169031
+E81   11  2971.04296 0.0006169031
+E102   2  2182.45070 0.0006161429
+E9     3   372.71911 0.0006153846
+E57    3   631.02149 0.0006146281
+E83    3   565.00000 0.0006146281
+E61    2   348.02149 0.0006138735
+E66    2   348.02149 0.0006138735
+E12    3   922.90113 0.0006116208
+N42    2    47.24722 0.0006097561
+N6     4   678.47408 0.0006082725
+E25    2    43.69047 0.0006079027
+N86    1     0.00000 0.0006053269
+N96    1     0.00000 0.0006053269
+E85    4   846.00000 0.0006049607
+E91    2   283.00000 0.0006035003
+E86    1     0.00000 0.0006027728
+E89    1     0.00000 0.0006027728
+E90    1     0.00000 0.0006027728
+N154   1     0.00000 0.0006002401
+N4     3   315.48357 0.0005988024
+E10    4   743.36832 0.0005984440
+N116   1     0.00000 0.0005980861
+N22    1     0.00000 0.0005931198
+N62    1     0.00000 0.0005931198
+N70    1     0.00000 0.0005931198
+N74    1     0.00000 0.0005931198
+E31    3   565.00000 0.0005899705
+E28    2     8.97495 0.0005892752
+E14    1     0.00000 0.0005885815
+N21    1     0.00000 0.0005868545
+N45    1     0.00000 0.0005868545
+N46    1     0.00000 0.0005868545
+N47    1     0.00000 0.0005868545
+N52    1     0.00000 0.0005868545
+N53    1     0.00000 0.0005868545
+N54    1     0.00000 0.0005868545
+N93    1     0.00000 0.0005868545
+N95    1     0.00000 0.0005868545
+N150   1     0.00000 0.0005868545
+N84    2    20.47610 0.0005854801
+E29    4   846.00000 0.0005844535
+N71    1     0.00000 0.0005813953
+N237   1     0.00000 0.0005813953
+N243   1     0.00000 0.0005813953
+N29    3  1775.43509 0.0005800464
+N5     4   394.48534 0.0005780347
+N7     2    31.29553 0.0005747126
+E64    2   283.00000 0.0005743825
+E60    1     0.00000 0.0005737235
+E37    1     0.00000 0.0005730659
+E58    1     0.00000 0.0005717553
+E59    1     0.00000 0.0005717553
+E68    1     0.00000 0.0005717553
+N87    1     0.00000 0.0005701254
+N88    1     0.00000 0.0005701254
+N89    1     0.00000 0.0005701254
+N90    1     0.00000 0.0005701254
+N91    9  2426.11250 0.0005701254
+N143   1     0.00000 0.0005701254
+N144   1     0.00000 0.0005701254
+N209   1     0.00000 0.0005701254
+E4     3   167.46790 0.0005608525
+N8     1     0.00000 0.0005599104
+N242   1     0.00000 0.0005599104
+N244   3  2545.05815 0.0005567929
+E101   1     0.00000 0.0005515720
+N127  11  3266.61847 0.0005506608
+N156   3   565.00000 0.0005494505
+N160   1     0.00000 0.0005482456
+N161   1     0.00000 0.0005482456
+N63    1     0.00000 0.0005458515
+E17    3  1527.05413 0.0005414185
+N81    1     0.00000 0.0005405405
+N67    1     0.00000 0.0005376344
+N98    1     0.00000 0.0005376344
+N142   1     0.00000 0.0005376344
+N146   1     0.00000 0.0005376344
+N152   1     0.00000 0.0005376344
+N125   2   843.00000 0.0005347594
+N145   3  3526.00000 0.0005347594
+N128   2    46.72849 0.0005336179
+N187   2   313.79589 0.0005336179
+N31    1     0.00000 0.0005319149
+N151   1     0.00000 0.0005319149
+N153   1     0.00000 0.0005313496
+N17    1     0.00000 0.0005274262
+N20    1     0.00000 0.0005274262
+E23    3   423.50000 0.0005271481
+E1     2    57.77533 0.0005265929
+E33    2   140.50000 0.0005265929
+E44    2   283.00000 0.0005265929
+N49    1     0.00000 0.0005252101
+N137   1     0.00000 0.0005252101
+N162   1     0.00000 0.0005252101
+N163   1     0.00000 0.0005252101
+N164   1     0.00000 0.0005252101
+N165   1     0.00000 0.0005252101
+N166   1     0.00000 0.0005252101
+N167   1     0.00000 0.0005252101
+N168   1     0.00000 0.0005252101
+N169   1     0.00000 0.0005252101
+N170   1     0.00000 0.0005252101
+N179   1     0.00000 0.0005252101
+N181   1     0.00000 0.0005252101
+E53    3  1036.38255 0.0005238345
+N138   1     0.00000 0.0005235602
+N173   1     0.00000 0.0005235602
+N175   1     0.00000 0.0005235602
+N26    1     0.00000 0.0005213764
+E11    1     0.00000 0.0005189414
+E21    2   395.99088 0.0005178664
+N176   1     0.00000 0.0005165289
+N177   1     0.00000 0.0005165289
+N178   1     0.00000 0.0005165289
+N185   1     0.00000 0.0005154639
+N24    1     0.00000 0.0005117707
+N25    1     0.00000 0.0005117707
+N123   3  1253.71671 0.0005081301
+N60    1     0.00000 0.0005055612
+N61    1     0.00000 0.0005055612
+E72    5   656.40051 0.0005032713
+N56    1     0.00000 0.0005015045
+N57    1     0.00000 0.0005015045
+N58    1     0.00000 0.0005015045
+E20    1     0.00000 0.0004982561
+E2     1     0.00000 0.0004967710
+N112   1     0.00000 0.0004940711
+E36    2   564.00000 0.0004918839
+E62    1     0.00000 0.0004909180
+E84   10  2264.75293 0.0004852014
+E73    9  2236.00000 0.0004847310
+E94    2   283.00000 0.0004768717
+E87    1     0.00000 0.0004755112
+E105   1     0.00000 0.0004755112
+N30    1     0.00000 0.0004694836
+E3     7  2221.00000 0.0004692633
+E7     2   816.00000 0.0004670715
+E77    3   565.00000 0.0004653327
+N2     2     1.00000 0.0004591368
+N129   1     0.00000 0.0004587156
+N64    1     0.00000 0.0004582951
+N147   1     0.00000 0.0004405286
+N149   1     0.00000 0.0004405286
+N80    2   283.00000 0.0004321521
+N188   1     0.00000 0.0004266212
+N189   1     0.00000 0.0004266212
+N190   1     0.00000 0.0004266212
+N191   1     0.00000 0.0004266212
+N192   1     0.00000 0.0004266212
+N193   1     0.00000 0.0004266212
+N194   1     0.00000 0.0004266212
+N195   1     0.00000 0.0004266212
+N101   1     0.00000 0.0004262575
+N102   1     0.00000 0.0004262575
+N104   1     0.00000 0.0004262575
+N105   1     0.00000 0.0004262575
+N106   1     0.00000 0.0004262575
+N157   1     0.00000 0.0004262575
+N158   1     0.00000 0.0004262575
+N159   1     0.00000 0.0004262575
+N184   1     0.00000 0.0004201681
+N59    4  1402.00000 0.0004163197
+N11    1     0.00000 0.0004142502
+N12    1     0.00000 0.0004142502
+N14    1     0.00000 0.0004142502
+N15    1     0.00000 0.0004142502
+N16    1     0.00000 0.0004142502
+N126   1     0.00000 0.0004111842
+N241   1     0.00000 0.0004111842
+E24    1     0.00000 0.0003850597
+E15    2   843.00000 0.0003732736
+E5     1     0.00000 0.0003724395
+N99    2   564.00000 0.0003380663
+E16    2   283.00000 0.0003087373
+N100   1     0.00000 0.0002839296</code></pre>
+</div>
+</div>
+<p>The first 32 nodes have a closeness centrality of exactly 1, despite having only one connection. This counterintuitive result points towards the network appearing to be disconnected and fragmented, as these nodes are only connected to one other node in small components. Since no other nodes are reachable from them, their sum of distances is technically 1, resulting in a closeness score of 1 under igraph’s calculation.</p>
+<p>To avoid this problem, we can try to work with largest connected component, which is typically done with disconnected networks.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb72"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb72-1"><a href="#cb72-1" aria-hidden="true" tabindex="-1"></a>cc <span class="ot">&lt;-</span> <span class="fu">components</span>(g_undirected)</span>
+<span id="cb72-2"><a href="#cb72-2" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(cc<span class="sc">$</span>csize)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 285   2   3   2   2   2</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb74"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb74-1"><a href="#cb74-1" aria-hidden="true" tabindex="-1"></a><span class="fu">sort</span>(cc<span class="sc">$</span>csize, <span class="at">decreasing =</span> <span class="cn">TRUE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code> [1] 285   9   4   3   3   3   3   3   3   3   2   2   2   2   2   2   2   2   2
+[20]   2   2   2   2   2   2   2</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb76"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb76-1"><a href="#cb76-1" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(cc<span class="sc">$</span>no)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 26</code></pre>
+</div>
+</div>
+<p>There seems to be 26 components, and the largest one has a size of 285, followed by sizes of 9, 4, 3 and 2. This shows how a significant portion of the network is fragmented into many small, disconnected subgraphs. Hence, we have to focus on the largest connected component (Giant Component) for meaningful structural analysis.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb78"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb78-1"><a href="#cb78-1" aria-hidden="true" tabindex="-1"></a>gGC <span class="ot">&lt;-</span> <span class="fu">decompose</span>(g_undirected)[[<span class="dv">1</span>]]</span>
+<span id="cb78-2"><a href="#cb78-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb78-3"><a href="#cb78-3" aria-hidden="true" tabindex="-1"></a><span class="fu">vcount</span>(gGC)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 285</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb80"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb80-1"><a href="#cb80-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ecount</span>(gGC)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 357</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb82"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb82-1"><a href="#cb82-1" aria-hidden="true" tabindex="-1"></a><span class="fu">diameter</span>(g)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 1</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb84"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb84-1"><a href="#cb84-1" aria-hidden="true" tabindex="-1"></a><span class="fu">diameter</span>(gGC)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 18</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb86"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb86-1"><a href="#cb86-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(gGC)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="first_assignment_files/figure-html/unnamed-chunk-19-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>This subgraph has 285 nodes and 457 links. When we compare the diameter (largest distance) of our total network (1) with the diameter of our Giant Component (18), we can see that the overall network appears trivially connected due to many isolated pairs of nodes, while the Giant Component reveals the true structural depth and path diversity of the core network.</p>
+<p>We can now recalculate and visualise the neighborhood of the node with the largest closeness.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb87"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb87-1"><a href="#cb87-1" aria-hidden="true" tabindex="-1"></a>closeness_vals_GC <span class="ot">&lt;-</span> <span class="fu">closeness</span>(gGC, <span class="at">mode =</span> <span class="st">"all"</span>)</span>
+<span id="cb87-2"><a href="#cb87-2" aria-hidden="true" tabindex="-1"></a>top_node_GC <span class="ot">&lt;-</span> <span class="fu">names</span>(<span class="fu">which.max</span>(closeness_vals_GC))</span>
+<span id="cb87-3"><a href="#cb87-3" aria-hidden="true" tabindex="-1"></a>top_node_GC</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "E35"</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb89"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb89-1"><a href="#cb89-1" aria-hidden="true" tabindex="-1"></a>ego_graph_GC <span class="ot">&lt;-</span> <span class="fu">make_ego_graph</span>(gGC, <span class="at">order =</span> <span class="dv">1</span>, <span class="at">nodes =</span> top_node_GC)[[<span class="dv">1</span>]]</span>
+<span id="cb89-2"><a href="#cb89-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb89-3"><a href="#cb89-3" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(ego_graph_GC,</span>
+<span id="cb89-4"><a href="#cb89-4" aria-hidden="true" tabindex="-1"></a>     <span class="at">main =</span> <span class="fu">paste</span>(<span class="st">"Ego Network of Giant Component Node with Largest Closeness:"</span>, top_node_GC))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="first_assignment_files/figure-html/unnamed-chunk-20-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>The ego network of the node with the highest closeness centrality in the Giant Component shows a strong hub structure. The central node is directly connected to a large number of other nodes, which are themselves not directly connected to each other. This star-shaped pattern shows that the central node is at a very short distance from many others, resulting in a high closeness score.</p>
+<p>In comparison to E13, this node’s centrality is structurally meaningful. It plays a key role in connecting a large portion of the network and minimising the average distance to all other nodes in the Giant Component. In conclusion, this shows that closeness centrality is best interpreted for our network within the largest connected component, where the network’s true structure and connectivity are visible.</p>
 </section>
 </section>
+</section>
+<section id="conclusion" class="level1">
+<h1>Conclusion</h1>
+<p>The analysis reveals that the Abu Sayyaf Group’s network is fragmented, decentralized, and strategically structured. A few key nodes concentrate connectivity, while the majority remain peripheral and isolated. This setup, characterized by low local clustering and clearly defined communities, reflects an organization designed to operate securely and remain resilient against detection or disruption. The emerging structure is not random, but rather aligned with an operational model that prioritizes cell isolation and tactical centralization.</p>
+<p>Overall, the network demonstrates an internal logic aimed at maintaining operational efficiency under conditions of secrecy.</p>
 </section>
 
 </main>

@@ -1,6 +1,6 @@
 ---
 title: "Social_Networks_first_assignment"
-format: html
+format: pdf
 editor: visual
 ---
 
