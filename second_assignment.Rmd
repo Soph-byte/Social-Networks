@@ -1,0 +1,45 @@
+---
+title: "Social_Networks_Second_Assignment"
+format: pdf
+date: "2025-05-13"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# 0. Requierements 
+
+You will have to present a report:
+• Include a section in which you address each of the steps in point 3. and
+answer the questions.
+• You have to show the code used to solve the question and the answer.
+• Hand out the pdf or html version of the notebook
+
+
+# Introduction 
+
+## Libraries 
+
+## Loading network
+
+# Task: Link Prediction Project 
+
+## 1. Delete a fraction of real edges in the network and create a table
+of those links deleted (positive class) and of links non-present
+(negative class)
+
+## 2. Generate a number of proximity/similarty metrics heuristics for
+each link in the positive and negative class
+
+
+## 3. Train a binary classifier to predict the links, i.e., to predict the
+class (positive/negative) using those heuristics. Use crossvalidation.
+
+
+## 4. Evaluate the precision of the model. Which heuristic is the most
+important. Why do you think it is the most important?
+
+## 5. Comment on potential ways to improve the link prediction
+
+# Conclusion 
