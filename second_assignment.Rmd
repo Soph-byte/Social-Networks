@@ -158,13 +158,13 @@ We are now finally ready to calculate the heuristics for each link. The heuristi
 
 Firstly, we initialize three new columns in `total_edges` to store the three heuristic values we will calculate. Then, we use a `for` loop to compute the heuristics for each node-pair in our dataframe. We use the following formulas:
 
-| Heuristic | Formula |
-|---------------------------------|--------------------------------------|
-| Jaccard Similarity | $$\frac{|A \cap B|}{|A \cup B|}$$ |
-| Adamic-Adar Index | $$
-\sum_{z \in N(u) \cap N(v)} \frac{1}{\log(\deg(z))}
-$$ |
-| Preferential Attachment | $$\deg(u) \times \deg(v)$$ |
+| Heuristic               | Formula                                                                                                       |
+|----------------------------------|--------------------------------------|
+| Jaccard Similarity      | $$\frac{|A \cap B|}{|A \cup B|}$$                                                                             |
+| Adamic-Adar Index       | $$                                                                                                            
+                                                                                 \sum_{z \in N(u) \cap N(v)} \frac{1}{\log(\deg(z))}      
+                                                                                 $$                                                       |
+| Preferential Attachment | $$\deg(u) \times \deg(v)$$                                                                                    |
 
 ```{r heuristics}
 ## Compute heuristics and assign them to total_edges
@@ -207,6 +207,9 @@ for (i in 1:nrow(total_edges)){
 ```
 
 We can check that the heuristic calculation worked correctly:
+
+```{r}
+```
 
 ```{r}
 head(total_edges)
@@ -299,32 +302,58 @@ All in all, our model right now is good at identifying the absence of links but 
 Let's try changing our threshold again.
 
 ```{r}
-evaluation(0.60, glm_prediction, total_edges_test)
-
-
-# TODO: if we wanna go crazy we can do a ROC curve to get the best threshold. dunno dontcare you girls decide 
-
 library(pROC)
 
-# Generate ROC curve
 roc_obj <- roc(total_edges_test$obs, glm_prediction)
 
-# Plot the ROC curve
 plot(roc_obj, main = "ROC Curve for Link Prediction")
 
-# Find the optimal threshold (Youden's J Statistic)
 opt_threshold <- coords(roc_obj, "best", ret = "threshold")
-opt_threshold
 
-evaluation(opt_threshold, glm_prediction, total_edges_test)
+
+threshold_value <- opt_threshold[[1]]  
+
+evaluation(threshold_value, glm_prediction, total_edges_test)
+
+
 ```
 
 ## 4. Evaluate the precision of the model. Which heuristic is the most important. Why do you think it is the most important?
 
-Miau
+```{r}
+conf <- evaluation(threshold_value, glm_prediction, total_edges_test)
+conf$table
+
+```
+
+```{r}
+precision <- conf$byClass["Precision"]
+cat("Precision:", precision)
+
+
+```
+
+Precision = 93.1 % at the optimum threshold (≈ 0.787) Means: 93 % of the predicted positive links were actually real connections Very good prediction accuracy for existing edges
+
+```{r}
+summary(glm_link)
+
+```
+
+Most important heuristic: Adamic-Adar (sim_aa) Highest coefficient in the GLM (β ≈ 2.91) Very high z-value (18.1) → strong effect Extremely significant (p \< 2e-16) Provides the largest contribution to predictive power -\> considers common neighbors, weighted according to their information content
+
+sim_jacc: Not significant (p = 0.203) Not a reliable predictor in this data set sim_pref: Significant (p ≈ 5e-07) But very small effect (coefficient ≈ 0.000057)
+
+\
+**Adamic-Adar is therefore the most important heuristic in this model, both statistically and theoretically.**
 
 ## 5. Comment on potential ways to improve the link prediction
 
-miaumiaumiau
+> (TODO: better explanatiion? i really dont know what else to do for improving )
+ways to improve:
+- Explore More Sophisticated Similarity Metrics
+- Incorporate Node Attributes
+- Different Classification Algorithms
+- Potential Class Imbalance
 
 # Conclusion
