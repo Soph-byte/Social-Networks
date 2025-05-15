@@ -1,6 +1,7 @@
 ---
 title: "Social_Networks_Second_Assignment"
 format: pdf
+author: "Irene Bosque Gala, Mafalda González González, Sophie Greta Kersten"
 date: "2025-05-13"
 ---
 
@@ -50,7 +51,7 @@ g <- graph_from_data_frame(d = edges, vertices = nodes, directed = TRUE)
 
 ## 1. Delete a fraction of real edges in the network and create a table of those links deleted (positive class) and of links non-present (negative class)
 
-Since we have 16730 nodes we delete $n= ?$ edges from $g$ to obtain $g'$, as (TODO justification for number of nodes deleted).
+Since we have 16,730 nodes we delete $n = 5000$ edges from $g$ to obtain $g'$, as this represents a small but significant fraction of the total number of edges. This number ensures a meaningful evaluation of our link prediction methods while maintaining the overall structure of the network. 
 
 ```{r Gprime}
 set.seed(7921)
@@ -209,11 +210,9 @@ for (i in 1:nrow(total_edges)){
 We can check that the heuristic calculation worked correctly:
 
 ```{r}
-```
-
-```{r}
 head(total_edges)
 ```
+
 
 ## 3. Train a binary classifier to predict the links, i.e., to predict the class (positive/negative) using those heuristics. Use crossvalidation.
 
@@ -246,12 +245,12 @@ glm_link <- glm(obs ~ sim_jacc + sim_aa + sim_pref,
 
 summary(glm_link)
 
-require(stargazer) # TODO: he likes to use stargazer and recommended it in class!
-# stargazer(glm_link, type = "html", single.row = T, ...)
-
+require(stargazer) 
+suppressWarnings(
+  stargazer(glm_link, type = "text", single.row = TRUE)
+)
 ```
-
-TODO: small interpretation?
+Both the Adamic-Adar index and Preferential Attachment stand out as significant predictors of actual links. Adamic-Adar has the greatest impact, indicating that nodes with shared neighbors who aren’t very connected themselves are more likely to be linked. Preferential Attachment also plays a clear role, reflecting that nodes with many connections tend to form new ones. Finally, while Jaccard Similarity shows a positive trend, it isn’t statistically significant and might not contribute much to the prediction. Overall, the model fits the data fairly well according to the log-likelihood and AIC metrics.
 
 Now we use `predict.glm()` to predict the probability for each link in the testing set with `type = "response"` to do the output on the probability scale (between 0 and 1).
 
@@ -260,7 +259,7 @@ Now we use `predict.glm()` to predict the probability for each link in the testi
 glm_prediction <- predict.glm(glm_link, newdata = total_edges_test, type = "response")
 ```
 
-Finally we can evaluate the models accuracy using cross validation to see how well it performs with previously unseen data. The package `caret` makes it very easy to use confusion matrices. We initially set a threshold of 0.3 for classification of real or non-existent edge, which means that ... TODO. We are going to function this as we will be testing different thresholds below.
+Finally we can evaluate the models accuracy using cross validation to see how well it performs with previously unseen data. The package `caret` makes it very easy to use confusion matrices. We initially set a threshold of 0.3 for classifying a link as real or non-existent, which means any predicted probability above 0.3 is considered a real link. This low threshold is chosen to be inclusive at first, but we will test different thresholds to find the best balance between sensitivity and specificity.
 
 ```{r evaluation function}
 require(caret)
@@ -289,7 +288,7 @@ The confusion matrix shows us that the model does not predict a single non-exist
 
 All in all, our model predictions have a very serious issue.
 
-We can try to solve this by choosing a different threshold, for example 0.5. (TODO: justification of why we do this)
+We can try to solve this by choosing a different threshold, for example 0.5. This adjustment aims to improve the balance between detecting real links and correctly identifying non-links, potentially leading to better overall performance. 
 
 ```{r}
 evaluation(0.5, glm_prediction, total_edges_test)
@@ -315,29 +314,36 @@ threshold_value <- opt_threshold[[1]]
 
 evaluation(threshold_value, glm_prediction, total_edges_test)
 
-
 ```
+Using the ROC curve, we found an optimal threshold of about 0.79 to classify links. At this threshold, the model achieves an accuracy of approximately 65.45%, which is an improvement over previous thresholds.
+
+The confusion matrix shows the model is very good at correctly identifying non-existent links, with a specificity of 97.75%. This means it rarely classifies a non-existent link as real.
+
+However, the sensitivity (true positive rate) is low at around 31.77%, so the model only correctly detects about a third of the real links. It misses the remaining two-thirds, labeling them as non-links.
+
+The positive predictive value (precision) is high at 93.11%, meaning when the model predicts a link exists, it is usually correct.
+
+The negative predictive value is around 59.90%, reflecting that predictions of “no link” are less reliable.
+
+Overall, this higher threshold makes the model more conservative about predicting links, reducing false positives but increasing false negatives. It’s a trade-off favoring precision over recall, which might be suitable if false positives are more costly than false negatives in the application context.
+
 
 ## 4. Evaluate the precision of the model. Which heuristic is the most important. Why do you think it is the most important?
 
 ```{r}
 conf <- evaluation(threshold_value, glm_prediction, total_edges_test)
 conf$table
-
 ```
 
 ```{r}
 precision <- conf$byClass["Precision"]
 cat("Precision:", precision)
-
-
 ```
 
 Precision = 93.1 % at the optimum threshold (≈ 0.787) Means: 93 % of the predicted positive links were actually real connections Very good prediction accuracy for existing edges
 
 ```{r}
 summary(glm_link)
-
 ```
 
 Most important heuristic: Adamic-Adar (sim_aa) Highest coefficient in the GLM (β ≈ 2.91) Very high z-value (18.1) → strong effect Extremely significant (p \< 2e-16) Provides the largest contribution to predictive power -\> considers common neighbors, weighted according to their information content
