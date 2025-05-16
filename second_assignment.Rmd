@@ -7,14 +7,9 @@ format:
     pdf-engine: xelatex
 ---
 
-
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
-
-# 0. Requierements
-
-You will have to present a report: • Include a section in which you address each of the steps in point 3. and answer the questions. • You have to show the code used to solve the question and the answer. • Hand out the pdf or html version of the notebook
 
 # Introduction
 
@@ -74,12 +69,6 @@ true_edges <- data.frame(get.edges(g, indexes_deleted))
 ```
 
 In `false_edges` we are going to generate non-existent links in the network as our negative class, i.e. node pairs that are not connected in our observed graph (Gprime). We do this because in link prediction we are trying to classify whether a link should exist or not, and to do this we need both positive examples (real edges we deleted) and negative examples (edges that do not exist).
-
-Professors explanation in the notebook:
-
-> To see how well our heuristics perform, we need to compare how well they predict the delete edges with their prediction of non-existent links (our negative class). There are $|V|(|V|-1)/2 -|E|$ ($\gg 1$) non-existent links. From those ones we select only those that happen between highly connected nodes:
-
-//(Technical explanation of code below:)
 
 First, we define well-connected nodes, so that we only sample node-pairs from nodes with a degree greater than 10. We do this because nodes with fewer connections are less likely to form new edges, which would make link prediction more difficult.
 
@@ -154,23 +143,23 @@ n2 <- neighborhood(Gprime,order=1,nodes=total_edges$id2)
 
 We are now finally ready to calculate the heuristics for each link. The heuristics are necessary as link prediction deals with estimating the likelihood of a link forming between two nodes, thus we use heuristics to capture different aspects of node similarity or proximity. We can use:
 
-> (TODO: better explanations? not longer but better, these are from chat)
->
-> -   Jaccard Similarity: measures the overlap between neighbours.
-> -   Adamic-Adar Index: weighs common neighbours inversely by their degree.
-> -   Preferential Attachment: assumes that highly connected nodes are more likely to form new links.
->
-> These heuristics are popular because they are computationally efficient and capture different structural properties.
+-   Jaccard Similarity: Measures how many neighbors two nodes share, relative to the total number of unique neighbors they have.
+
+-   Adamic-Adar Index: Gives more weight to shared neighbors that have fewer connections, emphasizing rare or exclusive links.
+
+-   Preferential Attachment: Assumes nodes with many connections are more likely to gain even more, reflecting a "rich-get-richer" dynamic.
+
+These heuristics are popular because they are computationally efficient and capture different structural properties.
 
 Firstly, we initialize three new columns in `total_edges` to store the three heuristic values we will calculate. Then, we use a `for` loop to compute the heuristics for each node-pair in our dataframe. We use the following formulas:
 
-| Heuristic               | Formula                                                                                                                                                                                                                           |
+| Heuristic | Formula |
 |----------------------------------|--------------------------------------|
-| Jaccard Similarity      | $$\frac{|A \cap B|}{|A \cup B|}$$                                                                                                                                                                                                 |
-| Adamic-Adar Index       | $$                                                                                                                                                                                                                                
+| Jaccard Similarity | $$\frac{|A \cap B|}{|A \cup B|}$$ |
+| Adamic-Adar Index | $$                                                                                                                                                                                                                                
                                                                                                                                                                                              \sum_{z \in N(u) \cap N(v)} \frac{1}{\log(\deg(z))}              
-                                                                                                                                                                                             $$                                                               |
-| Preferential Attachment | $$\deg(u) \times \deg(v)$$                                                                                                                                                                                                        |
+                                                                                                                                                                                             $$ |
+| Preferential Attachment | $$\deg(u) \times \deg(v)$$ |
 
 ```{r heuristics}
 ## Compute heuristics and assign them to total_edges
@@ -257,6 +246,8 @@ suppressWarnings(
 
 Both the Adamic-Adar index and Preferential Attachment stand out as significant predictors of actual links. Adamic-Adar has the greatest impact, indicating that nodes with shared neighbors who aren’t very connected themselves are more likely to be linked. Preferential Attachment also plays a clear role, reflecting that nodes with many connections tend to form new ones. Finally, while Jaccard Similarity shows a positive trend, it isn’t statistically significant and might not contribute much to the prediction. Overall, the model fits the data fairly well according to the log-likelihood and AIC metrics.
 
+This makes sense given the context. Some users (e.g. frequent clients or popular escorts) are more central, which the Preferential Attachment measure captures well. Adamic-Adar's strength may reflect niche connections — users with less-connected common neighbors might indicate more exclusive or context-specific links, which could be important in this network.
+
 Now we use `predict.glm()` to predict the probability for each link in the testing set with `type = "response"` to do the output on the probability scale (between 0 and 1).
 
 ```{r GLM prediction}
@@ -289,7 +280,9 @@ evaluation <- function(threshold, glm_prediction, total_edges_test) {
 evaluation(0.3, glm_prediction, total_edges_test)
 ```
 
-The confusion matrix shows us that the model does not predict a single non-existent link as actually non-existent (true negative = 0) as all predictions are actually classified as 1. Also, with an accuracy of 0.4895, our model is actually performing worse than random guessing, which is very lol.
+The confusion matrix shows us that the model does not predict a single non-existent link as actually non-existent (true negative = 0) as all predictions are actually classified as 1. Also, with an accuracy of 0.4895, our model is actually performing worse than random guessing, which is clearly not ideal.
+
+This result likely stems from the extreme class imbalance — most potential links in the network simply don’t exist. A very low threshold like 0.3 makes the model overly eager, causing it to predict links too often in a network where most client–escort pairs never connect.
 
 All in all, our model predictions have a very serious issue.
 
@@ -301,9 +294,11 @@ evaluation(0.5, glm_prediction, total_edges_test)
 
 With this threshold, our model looks more normal. It has an accuracy of 63.45%, which is thankfully above random guessing. It does pretty good identifying actual non-existent links as non-existent links (specificity (recall for class 0) of 91.38%). It does however also predict a very high number of existent links as non-existent (negative predictive value of 59.20%). The worst metric is the sensitivity (recall for class 1 of 34.32%), where the model only captures around a third of the true links (it predicted of the true links 643 as negative and only 336 as positive).
 
+A threshold of 0.5 performs better because it forces the model to be more selective — which aligns with the real-world distribution in this network, where only a small fraction of all possible client–escort combinations actually become links.
+
 All in all, our model right now is good at identifying the absence of links but struggles hevaily at predicting real links, showing a bias towards non-links (`obs`= 0)
 
-Let's try changing our threshold again.
+Instead of manually selecting thresholds, we now attempt to find an optimal threshold using the ROC curve. This allows us to identify the cutoff that best balances sensitivity and specificity based on model probabilities.
 
 ```{r}
 library(pROC)
@@ -327,13 +322,11 @@ The confusion matrix shows the model is very good at correctly identifying non-e
 
 However, the sensitivity (true positive rate) is low at around 31.77%, so the model only correctly detects about a third of the real links. It misses the remaining two-thirds, labeling them as non-links.
 
-The positive predictive value (precision) is high at 93.11%, meaning when the model predicts a link exists, it is usually correct.
-
-The negative predictive value is around 59.90%, reflecting that predictions of “no link” are less reliable.
-
-Overall, this higher threshold makes the model more conservative about predicting links, reducing false positives but increasing false negatives. It’s a trade-off favoring precision over recall, which might be suitable if false positives are more costly than false negatives in the application context.
+Overall, a high threshold like 0.79 confirms the model needs strong structural evidence to predict a link. This is appropriate in a context like ours, where forming a link requires mutual interest and other offline factors that the network alone doesn’t capture. So the model becomes conservative — better at avoiding false links, though at the cost of missing many real ones.
 
 ## 4. Evaluate the precision of the model. Which heuristic is the most important. Why do you think it is the most important?
+
+We evaluate the model at the optimal threshold (≈ 0.787) obtained from the ROC curve.
 
 ```{r}
 conf <- evaluation(threshold_value, glm_prediction, total_edges_test)
@@ -345,31 +338,38 @@ precision <- conf$byClass["Precision"]
 cat("Precision:", precision)
 ```
 
-Precision = 93.1 % at the optimum threshold (≈ 0.787) Means: 93 % of the predicted positive links were actually real connections Very good prediction accuracy for existing edges
+At the optimal threshold (≈ 0.787), the model achieves a precision of 93.1%, meaning that most of the links predicted as existing are indeed real. This indicates the model is highly selective, which fits the nature of the escort-client network — connections aren’t random but follow identifiable patterns based on user behavior and shared interactions.
 
 ```{r}
 summary(glm_link)
 ```
 
-Most important heuristic: Adamic-Adar (sim_aa) Highest coefficient in the GLM (β ≈ 2.91) Very high z-value (18.1) → strong effect Extremely significant (p \< 2e-16) Provides the largest contribution to predictive power -\> considers common neighbors, weighted according to their information content
+Among the heuristics, Adamic-Adar (sim_aa) is clearly the most important predictor. It has the highest coefficient in the GLM at approximately 2.91, a z-value of 18.1, and is extremely significant (p \< 2e-16). This heuristic captures the number of shared neighbors between two nodes, giving more weight to neighbors that are themselves less connected — which may reflect exclusive or targeted user behavior in the network.
 
-sim_jacc: Not significant (p = 0.203) Not a reliable predictor in this data set sim_pref: Significant (p ≈ 5e-07) But very small effect (coefficient ≈ 0.000057)\
-**Adamic-Adar is therefore the most important heuristic in this model, both statistically and theoretically.**
+By contrast, Jaccard Similarity (sim_jacc) has a p-value of 0.203, indicating it is not statistically significant, and thus not a reliable predictor in this setting. Preferential Attachment (sim_pref) is statistically significant (p ≈ 5e-07) but has a very small coefficient (≈ 0.000057), suggesting its practical effect is minimal.
+
+Overall, Adamic-Adar is therefore the most important heuristic in this model, both statistically and theoretically.
 
 ## 5. Comment on potential ways to improve the link prediction
 
--   Using more advanced similarity measures that are better suited for bipartite networks
+There are several strategies that could enhance the performance of our link prediction model:
 
--   Adding node attributes (f.e. user activity, ratings) to include more information in the model
+-   **Use of advanced similarity measures:** The heuristics we used are simple and general. Exploring more sophisticated or domain-specific metrics—especially those tailored for bipartite or weighted networks—could capture more nuanced link patterns.
 
--   Trying other classification models like Random Forest or Support Vector Machines
+-   **Incorporating node attributes:** Enhancing the model with contextual data, such as user activity levels, number of past reviews, average ratings, or timestamps, would enrich the model’s inputs and allow it to learn from additional relevant information beyond the graph st
 
--   Handling class imbalance better (f.e. by oversampling positive cases or using different thresholds)
+-   **Experimenting with other classifiers:** Logistic regression is interpretable but may be too simplistic. Models like Random Forests, Support Vector Machines, or Gradient Boosted Trees can capture non-linear relationships and interactions between features.
 
--   Tuning hyperparameters or use ensemble methods for better performance
+-   **Addressing class imbalance:** The dataset likely contains far more non-links than real links. Techniques such as oversampling the positive class, adjusting class weights, or optimizing different thresholds can help mitigate this imbalance.
 
--   Considering temporal aspects if the network has timestamps (f.e. newer links may be more predictable)
+-   **Hyperparameter tuning:** As shown through ROC analysis, threshold tuning significantly affects performance. Further refinement might offer additional gains.
+
+-   **Leveraging temporal information:** If the network evolves over time, incorporating temporal features (e.g., link recency or activity trends) could help the model focus on the most relevant patterns.
 
 # Conclusion
 
-In this assignment, we worked on the problem of link prediction using a real-world bipartite social network. We simulated missing links by removing a random subset of edges and then used three standard similarity heuristics—Jaccard, Adamic-Adar, and Preferential Attachment—to calculate scores for each link. These heuristics helped us build a logistic regression model to predict whether a link exists or not. The Adamic-Adar heuristic turned out to be the most useful, showing the strongest effect in the model. Preferential Attachment also contributed, but with a smaller impact. Jaccard similarity did not appear to be statistically significant in this case. While the model achieved a high precision of over 93% at the optimal threshold, recall was relatively low, meaning it missed many of the real links. This suggests that the model was conservative and biased toward predicting non-links, which should be taken into account when evaluating performance. Additionally, the bipartite nature of the network may have influenced the effectiveness of the heuristics, especially those relying on neighborhood overlap. Since nodes are of two different types, direct neighbors are not of the same class, which could affect similarity measures and their predictive power. To improve the results, future work could involve testing other heuristics better suited for bipartite graphs, using node attributes, or trying different types of models. Overall, the project gave us a better understanding of how structural properties of networks can be used for link prediction and where the limitations lie.
+In this project, we applied logistic regression to predict links in a bipartite network of client-escort encounters in Brazil. Using heuristics like Jaccard Similarity, Adamic-Adar, and Preferential Attachment, we trained a model to classify whether a link exists between two nodes. The Adamic-Adar index emerged as the most informative heuristic, both statistically and conceptually, likely because it captures nuanced structural signals — such as shared, low-degree neighbors — that reflect behavioral tendencies in this network.
+
+Our evaluation showed that model performance depends strongly on the classification threshold. By tuning this threshold using the ROC curve, we achieved a precision of 93.1%, meaning that when the model predicts a link, it is correct most of the time. This is particularly important in our context: encounters between users are rare and influenced by deliberate choices, not random chance. The network’s bipartite nature (where only clients and escorts can connect) may also limit the effectiveness of some general-purpose similarity metrics like Jaccard.
+
+Overall, the model is conservative in predicting new links, favoring precision over recall. While it performs very well at identifying non-links, it tends to miss a large number of real connections. This trade-off might be acceptable in domains where false positives are more problematic than false negatives. In this case, predicting non-existent links as real could be misleading, so the model's cautious approach aligns well with the sensitive and highly structured nature of the dataset.
