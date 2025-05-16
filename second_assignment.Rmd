@@ -1,9 +1,12 @@
 ---
 title: "Social_Networks_Second_Assignment"
-format: pdf
 author: "Irene Bosque Gala, Mafalda González González, Sophie Greta Kersten"
 date: "2025-05-13"
+format:
+  pdf:
+    pdf-engine: xelatex
 ---
+
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -15,15 +18,17 @@ You will have to present a report: • Include a section in which you address ea
 
 # Introduction
 
-escorts — Brazilian prostitution network (2010)
+In this project, we analyze a bipartite network that represents interactions between escorts and clients in Brazil. The data comes from an online platform where clients rated their experiences with escorts. In the network, one type of node stands for escorts, and the other for clients.
 
-Description
+Each edge represents an encounter, with a rating attached to it: -1 (bad), 0 (neutral), or +1 (good). Some additional information like timestamps is also included in the dataset.
 
-:   A bipartite network of escort and individuals who buy sex from them in Brazil, extracted from a Brazilian online community for such ratings. Edges represent a purchase of sexual intercourse with an escort, and the edge weight gives the buyer's rating of the escort: -1 (bad), 0 (neutral), or +1 (good). Other edge attributes are available.
+The aim of the project is to apply link prediction techniques to this network — in other words, to try and predict whether a connection between two nodes should exist or not, based on the structure of the rest of the network. To do this, we use similarity measures between nodes and train a binary classifier.
 
-<https://networks.skewed.de/net/escorts>
+Since this is a bipartite network, meaning that edges only connect nodes of different types, this might influence how well certain similarity metrics perform.
 
-L. Rocha, F. Liljeros, & P. Holme. "Simulated epidemics in an empirical spatiotemporal network of 50,185 sexual contacts." PLoS Comput Biol, 7(3). (2011)., <https://doi.org/10.1371/journal.pcbi.1001109> \[[\@sci-hub](https://sci-hub.st/10.1371/journal.pcbi.1001109)\]
+Dataset source: <https://networks.skewed.de/net/escorts>
+
+Reference: Rocha, L., Liljeros, F., & Holme, P. (2011). Simulated epidemics in an empirical spatiotemporal network of 50,185 sexual contacts. PLoS Computational Biology, 7(3). <https://doi.org/10.1371/journal.pcbi.1001109>
 
 ## Libraries
 
@@ -51,7 +56,7 @@ g <- graph_from_data_frame(d = edges, vertices = nodes, directed = TRUE)
 
 ## 1. Delete a fraction of real edges in the network and create a table of those links deleted (positive class) and of links non-present (negative class)
 
-Since we have 16,730 nodes we delete $n = 5000$ edges from $g$ to obtain $g'$, as this represents a small but significant fraction of the total number of edges. This number ensures a meaningful evaluation of our link prediction methods while maintaining the overall structure of the network. 
+Since we have 16,730 nodes we delete $n = 5000$ edges from $g$ to obtain $g'$, as this represents a small but significant fraction of the total number of edges. This number ensures a meaningful evaluation of our link prediction methods while maintaining the overall structure of the network.
 
 ```{r Gprime}
 set.seed(7921)
@@ -159,13 +164,13 @@ We are now finally ready to calculate the heuristics for each link. The heuristi
 
 Firstly, we initialize three new columns in `total_edges` to store the three heuristic values we will calculate. Then, we use a `for` loop to compute the heuristics for each node-pair in our dataframe. We use the following formulas:
 
-| Heuristic               | Formula                                                                                                       |
+| Heuristic               | Formula                                                                                                                                                                                                                           |
 |----------------------------------|--------------------------------------|
-| Jaccard Similarity      | $$\frac{|A \cap B|}{|A \cup B|}$$                                                                             |
-| Adamic-Adar Index       | $$                                                                                                            
-                                                                                 \sum_{z \in N(u) \cap N(v)} \frac{1}{\log(\deg(z))}      
-                                                                                 $$                                                       |
-| Preferential Attachment | $$\deg(u) \times \deg(v)$$                                                                                    |
+| Jaccard Similarity      | $$\frac{|A \cap B|}{|A \cup B|}$$                                                                                                                                                                                                 |
+| Adamic-Adar Index       | $$                                                                                                                                                                                                                                
+                                                                                                                                                                                             \sum_{z \in N(u) \cap N(v)} \frac{1}{\log(\deg(z))}              
+                                                                                                                                                                                             $$                                                               |
+| Preferential Attachment | $$\deg(u) \times \deg(v)$$                                                                                                                                                                                                        |
 
 ```{r heuristics}
 ## Compute heuristics and assign them to total_edges
@@ -213,7 +218,6 @@ We can check that the heuristic calculation worked correctly:
 head(total_edges)
 ```
 
-
 ## 3. Train a binary classifier to predict the links, i.e., to predict the class (positive/negative) using those heuristics. Use crossvalidation.
 
 Our goal now is to train a model that can predict whether a link exists (`obs = 1`) or does not exist (`obs = 0`) between two nodes in the network. Thus, this a binary classification problem, where we try to classify edges as either "real" or "non-existent". For this we use a logistic regression model (`glm` with a binomial family) to learn the relationship between the link's existence (`obs`) and the heuristics we calculated (`sim_jacc`, `sim_aa`, `sim_pref`). Basically, the model learns which similarity metrics are the most predictive of real links.
@@ -250,6 +254,7 @@ suppressWarnings(
   stargazer(glm_link, type = "text", single.row = TRUE)
 )
 ```
+
 Both the Adamic-Adar index and Preferential Attachment stand out as significant predictors of actual links. Adamic-Adar has the greatest impact, indicating that nodes with shared neighbors who aren’t very connected themselves are more likely to be linked. Preferential Attachment also plays a clear role, reflecting that nodes with many connections tend to form new ones. Finally, while Jaccard Similarity shows a positive trend, it isn’t statistically significant and might not contribute much to the prediction. Overall, the model fits the data fairly well according to the log-likelihood and AIC metrics.
 
 Now we use `predict.glm()` to predict the probability for each link in the testing set with `type = "response"` to do the output on the probability scale (between 0 and 1).
@@ -288,7 +293,7 @@ The confusion matrix shows us that the model does not predict a single non-exist
 
 All in all, our model predictions have a very serious issue.
 
-We can try to solve this by choosing a different threshold, for example 0.5. This adjustment aims to improve the balance between detecting real links and correctly identifying non-links, potentially leading to better overall performance. 
+We can try to solve this by choosing a different threshold, for example 0.5. This adjustment aims to improve the balance between detecting real links and correctly identifying non-links, potentially leading to better overall performance.
 
 ```{r}
 evaluation(0.5, glm_prediction, total_edges_test)
@@ -315,6 +320,7 @@ threshold_value <- opt_threshold[[1]]
 evaluation(threshold_value, glm_prediction, total_edges_test)
 
 ```
+
 Using the ROC curve, we found an optimal threshold of about 0.79 to classify links. At this threshold, the model achieves an accuracy of approximately 65.45%, which is an improvement over previous thresholds.
 
 The confusion matrix shows the model is very good at correctly identifying non-existent links, with a specificity of 97.75%. This means it rarely classifies a non-existent link as real.
@@ -326,7 +332,6 @@ The positive predictive value (precision) is high at 93.11%, meaning when the mo
 The negative predictive value is around 59.90%, reflecting that predictions of “no link” are less reliable.
 
 Overall, this higher threshold makes the model more conservative about predicting links, reducing false positives but increasing false negatives. It’s a trade-off favoring precision over recall, which might be suitable if false positives are more costly than false negatives in the application context.
-
 
 ## 4. Evaluate the precision of the model. Which heuristic is the most important. Why do you think it is the most important?
 
@@ -348,18 +353,23 @@ summary(glm_link)
 
 Most important heuristic: Adamic-Adar (sim_aa) Highest coefficient in the GLM (β ≈ 2.91) Very high z-value (18.1) → strong effect Extremely significant (p \< 2e-16) Provides the largest contribution to predictive power -\> considers common neighbors, weighted according to their information content
 
-sim_jacc: Not significant (p = 0.203) Not a reliable predictor in this data set sim_pref: Significant (p ≈ 5e-07) But very small effect (coefficient ≈ 0.000057)
-
-\
+sim_jacc: Not significant (p = 0.203) Not a reliable predictor in this data set sim_pref: Significant (p ≈ 5e-07) But very small effect (coefficient ≈ 0.000057)\
 **Adamic-Adar is therefore the most important heuristic in this model, both statistically and theoretically.**
 
 ## 5. Comment on potential ways to improve the link prediction
 
-> (TODO: better explanatiion? i really dont know what else to do for improving )
-ways to improve:
-- Explore More Sophisticated Similarity Metrics
-- Incorporate Node Attributes
-- Different Classification Algorithms
-- Potential Class Imbalance
+-   Using more advanced similarity measures that are better suited for bipartite networks
+
+-   Adding node attributes (f.e. user activity, ratings) to include more information in the model
+
+-   Trying other classification models like Random Forest or Support Vector Machines
+
+-   Handling class imbalance better (f.e. by oversampling positive cases or using different thresholds)
+
+-   Tuning hyperparameters or use ensemble methods for better performance
+
+-   Considering temporal aspects if the network has timestamps (f.e. newer links may be more predictable)
 
 # Conclusion
+
+In this assignment, we worked on the problem of link prediction using a real-world bipartite social network. We simulated missing links by removing a random subset of edges and then used three standard similarity heuristics—Jaccard, Adamic-Adar, and Preferential Attachment—to calculate scores for each link. These heuristics helped us build a logistic regression model to predict whether a link exists or not. The Adamic-Adar heuristic turned out to be the most useful, showing the strongest effect in the model. Preferential Attachment also contributed, but with a smaller impact. Jaccard similarity did not appear to be statistically significant in this case. While the model achieved a high precision of over 93% at the optimal threshold, recall was relatively low, meaning it missed many of the real links. This suggests that the model was conservative and biased toward predicting non-links, which should be taken into account when evaluating performance. Additionally, the bipartite nature of the network may have influenced the effectiveness of the heuristics, especially those relying on neighborhood overlap. Since nodes are of two different types, direct neighbors are not of the same class, which could affect similarity measures and their predictive power. To improve the results, future work could involve testing other heuristics better suited for bipartite graphs, using node attributes, or trying different types of models. Overall, the project gave us a better understanding of how structural properties of networks can be used for link prediction and where the limitations lie.
