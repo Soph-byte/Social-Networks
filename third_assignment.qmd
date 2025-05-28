@@ -1,0 +1,210 @@
+---
+title: "third_assignment"
+format: revealjs
+editor: visual
+---
+
+# Introduction
+
+In this project, we analyze a bipartite network that represents interactions between escorts and clients in Brazil. The data comes from an online platform where clients rated their experiences with escorts. In the network, one type of node stands for escorts, and the other for clients.
+
+Each edge represents an encounter, with a rating attached to it: -1 (bad), 0 (neutral), or +1 (good). Some additional information like timestamps is also included in the dataset.
+
+The aim of the project is to apply link prediction techniques to this network — in other words, to try and predict whether a connection between two nodes should exist or not, based on the structure of the rest of the network. To do this, we use similarity measures between nodes and train a binary classifier.
+
+Since this is a bipartite network, meaning that edges only connect nodes of different types, this might influence how well certain similarity metrics perform.
+
+Dataset source: <https://networks.skewed.de/net/escorts>
+
+Reference: Rocha, L., Liljeros, F., & Holme, P. (2011). Simulated epidemics in an empirical spatiotemporal network of 50,185 sexual contacts. PLoS Computational Biology, 7(3). <https://doi.org/10.1371/journal.pcbi.1001109>
+
+## Libraries
+
+```{r}
+library(readr)              # read csv 
+library(igraph)             # create graph
+library(dplyr)
+library(ggplot2)
+library(purrr)
+```
+
+## Network
+
+We load the edges and nodes and create the graph from the data.
+
+```{r loading network}
+edges <- read_csv("network_escorts/edges.csv")
+head(edges, 4)
+
+nodes <- read_csv("network_escorts/nodes.csv")
+head(nodes, 4)
+
+# Buiding graph from data
+g <- graph_from_data_frame(d = edges, vertices = nodes, directed = TRUE)
+```
+
+### Exercise 1
+
+Task: Find the theoretical epidemic threshold βc for your network for the information to reach a significant number of nodes.
+
+Since our network is bipartite (clients ↔ escorts), we cannot apply epidemic models directly. To simulate a realistic spreading scenario between individuals, we construct a unipartite projection of the bipartite graph, focusing on the client side. In this projection, two clients are connected if they have interacted with the same escort.
+
+```{r}
+colnames(nodes)
+```
+
+bipartite network, work with its bipartite projection instead of the raw bipartite network.
+
+```{r}
+V(g)$type <- V(g)$male == 0
+
+is_bipartite(g)  
+table(V(g)$type)
+```
+
+We then generate the bipartite projection and retain only the largest connected component of the client-client network for further analysis:
+
+```{r}
+
+proj <- bipartite_projection(g)
+client_net <- proj$proj2  # proj2 = FALSE = clients
+
+
+components <- components(client_net)
+giant_client_net <- induced_subgraph(client_net, which(components$membership == which.max(components$csize)))
+
+summary(giant_client_net)
+plot(degree_distribution(giant_client_net), log = "xy", type = "l",
+     main = "Degree distribution (clients projection)")
+```
+
+We compute β using the known approximation formula: $$ \beta_c = \mu \frac{\langle k \rangle}{\langle k^2 \rangle - \langle k \rangle}$$
+
+μ=0.1 is the recovery rate ⟨k⟩ is the average degree ⟨k\^2⟩ is the average of the squared degrees
+
+```{r}
+mu <- 0.1
+k <- degree(giant_client_net)          # our network
+k_avg <- mean(k)
+k_sq_avg <- mean(k^2)
+beta_c <- mu * k_avg / (k_sq_avg - k_avg)
+beta_c
+
+```
+
+This gives us the theoretical epidemic threshold that will guide our later simulations. beta_c= 0.0002004398
+
+### Exercise 2
+
+task: Assuming that randomly-selected 1% initial spreaders, simulate the SIR model below and above that threshold and plot the number of infected people as a function of β.
+
+We define the function sim_sir() to simulate one realization of the spreading process. The function follows the standard SIR dynamics:
+
+Nodes can be in one of three states: 0 = Susceptible, 1 = Infected, 2 = Recovered At each time step: Infected nodes recover with probability μ Susceptible neighbors of infected nodes get infected with probability β
+
+```{r}
+sim_sir <- function(g, beta, mu, seeds){
+  state <- rep(0, vcount(g))  # 0 = S
+  state[seeds] <- 1           # 1 = I
+  t <- 0
+  table <- data.frame(t=0, inf=seeds)
+  while(sum(state == 1) > 0){
+    t <- t + 1
+    infected <- which(state == 1)
+    state[infected] <- ifelse(runif(length(infected)) < mu, 2, 1)  # Recovery step
+    infected <- which(state == 1)
+    susceptible <- which(state == 0)
+    contacts <- as.numeric(unlist(adjacent_vertices(g, infected)))
+    contacts <- contacts[contacts %in% susceptible]
+    new_infected <- contacts[runif(length(contacts)) < beta]
+    if(length(new_infected) > 0){
+      state[new_infected] <- 1
+      table <- rbind(table, data.frame(t, inf=new_infected))
+    }
+  }
+  table
+}
+
+```
+
+We simulate the process for six different β values — ranging from below βc to far above — to compare how the infection curve evolves. Each simulation starts with 1% of randomly selected nodes as initial spreaders.
+
+```{r}
+
+generate_seeds <- function(g) {
+  sample(1:vcount(g), vcount(g) * 0.01)
+}
+
+# different beta-values 
+beta_vals <- c(0.0001, beta_c, 0.001, 0.005, 0.01, 0.05)
+
+# simulation for each beat value
+results <- map_dfr(beta_vals, function(beta){
+  seeds <- generate_seeds(giant_client_net)
+  sim <- sim_sir(giant_client_net, beta, mu, seeds)
+  sim_summary <- sim %>% group_by(t) %>% summarize(ninf = n())
+  sim_summary$beta <- beta
+  sim_summary
+})
+
+```
+
+visualization how the number of new infections per time step evolves for each β:
+
+```{r}
+ggplot(results, aes(x=t, y=ninf, color=factor(beta))) +
+  geom_line() +
+  labs(title = "SIR Simulation at Different Beta Values",
+       x = "Time (t)", y = "Number of Infections",
+       color = "Beta") +
+  theme_minimal()
+
+```
+
+-   For $\beta < \beta_c$: The infection quickly dies out.
+-   At $\beta \approx \beta_c$: A limited spread may occur.
+-   For $\beta \gg \beta_c$: A large portion of the network becomes infected rapidly, with an early peak and a fast decline as nodes recover.
+
+The simulation confirms the theoretical threshold $\beta_c$ and shows how the dynamics of spreading change as a function of $\beta$.
+
+### Exercise 3
+
+Task: Choose a well-above above . Using centrality , communities or any other β βc suitable metric, find a better set of 1% of seeds in the network so we get more infected people than the random case. Measure the difference of your choice with the random case as: a)The difference in the total number of infected people:
+
+```{r}
+
+```
+
+b)The difference in the time of the peak of infection (when most infections happen):
+
+```{r}
+
+```
+
+### Exercise 4
+
+Using the same , design a “quarantine strategy”: at time step or , β t = 3 4 quarantine 20 % of the susceptible population. You can model quarantine by 8 temporally removing these nodes. Release the quarantined nodes time steps later, making them susceptible again. Measure the difference with respect to no quarantine.
+
+```{r}
+
+```
+
+### Exercise 5
+
+Suppose now that you can convince 5% of people in the network not to spread that information at all. - Choose those 5% randomly in the network. Simulate the SIR model above βc using 1% of the remaining nodes as seeds. Choose those seeds randomly. - Choose those 5% according to their centrality. Simulate the SIR model using 1% of the remaining nodes as seeds. Choose those seeds above βc randomly. 6. 7. - Measure the difference between both cases as you did in part c).
+
+### Exercise 6
+
+Comment on the relationship between the findings in part c) and d) using the same type of centrality for the 1% in part c) and 5% in part d).
+
+```{r}
+
+```
+
+### Exercise 7
+
+With the results of part b) train a model that predicts that time to infection of a node using their degree, centrality, betweeness, page rank and any other predictors you see fit. Use that model to select the seed nodes as those with the smallest time to infection in part c). Repeat d).
+
+```{r}
+
+```
