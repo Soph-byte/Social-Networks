@@ -1,0 +1,583 @@
+---
+title: "Final Assignment"
+author: "Irene Bosque, Sophie Kersten"
+date: "2025-05-28"
+output: html_document
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+## Introduction
+
+In this project, we analyze a bipartite network that represents interactions between escorts and clients in Brazil. The data comes from an online platform where clients rated their experiences with escorts. In the network, one type of node stands for escorts, and the other for clients.
+
+Each edge represents an encounter, with a rating attached to it: -1 (bad), 0 (neutral), or +1 (good). Some additional information like timestamps is also included in the dataset.
+
+Dataset source: <https://networks.skewed.de/net/escorts>
+
+Reference: Rocha, L., Liljeros, F., & Holme, P. (2011). Simulated
+epidemics in an empirical spatiotemporal network of 50,185 sexual
+contacts. PLoS Computational Biology, 7(3).
+<https://doi.org/10.1371/journal.pcbi.1001109>
+
+### Libraries
+
+```{r}
+library(tidyverse)
+library(igraph)
+library(ggthemes)
+library(leaflet)
+library(latex2exp)
+```
+
+### Loading the data
+
+```{r}
+edges <- read_csv("network_escorts/edges.csv")
+```
+
+```{r}
+head(edges, 4)
+```
+
+```{r}
+nodes <- read_csv("network_escorts/nodes.csv")
+```
+
+```{r}
+head(nodes, 4)
+```
+
+```{r}
+g <- graph_from_data_frame(d = edges, vertices = nodes, directed = TRUE)
+```
+
+### 1. Find the theoretical epidemic threshold for your network for the information to reach a significant number of nodes.
+
+Our original network is bipartite, representing interactions between two types of nodes: clients and escorts. However, classical epidemic models (like SIR) assume that infection can spread directly between connected nodes, which is not the case in a bipartite network where, for instance, clients are only connected to escorts—not to each other.
+
+To make epidemic modeling applicable, we first construct a unipartite projection of the bipartite network, focusing on the client side. In this projection, two clients are connected if they have interacted with the same escort: this means they are indirectly linked through a shared partner, which is a plausible path for disease transmission.
+
+```{r}
+colnames(nodes)
+```
+We begin by verifying the structure and focusing our analysis on the largest connected component of this client network. This ensures that we are modeling on a cohesive subgraph where large-scale diffusion is possible.
+
+```{r}
+V(g)$type <- V(g)$male == 0
+
+is_bipartite(g)  
+table(V(g)$type)
+```
+
+Using this structure, we perform a bipartite projection to create a unipartite network of clients. We then extract the largest connected component of this projected client network to ensure that our epidemic simulations operate on a cohesive subgraph where large-scale spread is possible.
+
+```{r}
+
+proj <- bipartite_projection(g)
+client_net <- proj$proj2  # proj2 = FALSE = clients
+
+
+components <- components(client_net)
+giant_client_net <- induced_subgraph(client_net, which(components$membership == which.max(components$csize)))
+
+summary(giant_client_net)
+```
+
+Now that we have a usable unipartite network of clients, we can compute the epidemic threshold 𝛽𝑐, which defines the critical transmission probability above which an epidemic can take off.
+
+```{r}
+mu <- 0.1
+
+k <- degree(giant_client_net)   
+
+k_avg <- mean(k)
+k_sq_avg <- mean(k^2)
+
+beta_c <- mu * k_avg / (k_sq_avg - k_avg)
+beta_c
+
+```
+
+After projecting the network and computing the relevant metrics, we find that the average degree is approximately 6.05, and the average squared degree is 318.97. With a recovery probability fixed at 𝜇=0.1, the estimated epidemic threshold is very low, around 𝛽𝑐≈0.0002.
+
+This small critical value is consistent with the structural characteristics of the projected client network, which exhibits high degree heterogeneity. Some clients are connected to many others (because they share escorts with multiple people), while others have few connections. This variation inflates the value of ⟨𝑘2⟩ (the average squared degree), and since𝛽𝑐is inversely proportional to ⟨𝑘2⟩−⟨𝑘⟩k⟩, the threshold decreases.
+
+As a result, the network is highly susceptible to epidemic outbreaks, even when the transmission probability is very low. Once 𝛽exceeds this critical threshold, the infection can propagate quickly through densely connected areas of the client network.
+
+These findings underscore the importance of the degree distribution and network topology in determining vulnerability to spreading processes. In such projected contact networks, nodes with high degree (i.e., clients with many shared escorts) act as bridges and accelerators for contagion, making them prime targets for containment or intervention strategies.
+
+### 2. Assuming that randomly-selected 1% initial spreaders, simulate the SIR model below and above that threshold and plot the number of infected people as a function of β.
+
+With the unipartite projection of the client network available, we simulate the spread of an infection using the SIR model. We aim to observe how the dynamics change depending on whether the transmission probability 𝛽is below or above the theoretical epidemic threshold 
+𝛽𝑐≈ 0.0002.
+
+The simulation uses the sim_sir() function, which updates each node’s state at every time step:
+
+- Susceptible (0): Healthy and vulnerable to infection.
+
+- Infected (1): Currently infectious and can spread the disease.
+
+- Recovered (2): No longer infectious and immune.
+
+At each step:
+
+- Infected nodes recover with probability 𝜇
+
+- Their susceptible neighbors become infected with probability 𝛽
+
+```{r}
+sim_sir <- function(g,beta,mu,seeds){
+  state <- rep(0,vcount(g)) #initial state of the simulation
+  state[seeds] <- 1 #infect the seeds
+  t <- 0
+  table <- data.frame(t=0,inf=seeds)
+  while(sum(state==1)>0){
+    t <- t + 1
+    ## I -> R
+    infected <- which(state==1) #get them
+    # generate a random value for every infected, if it's < mu, let the node recover.
+    state[infected] <- ifelse(runif(length(infected)) < mu,2,1)
+    
+    ## S -> I
+    infected <- which(state==1)
+    susceptible <- which(state==0) #get them
+    contacts <- as.numeric(unlist(adjacent_vertices(g,infected))) #get the contacts of infected
+    contacts <- contacts[contacts %in% susceptible] # get those who are susceptible
+    new_infected <- contacts[runif(length(contacts)) < beta] #infect contacts
+    if(length(new_infected)>0){
+      state[new_infected] <- 1
+      table <- rbind(table,data.frame(t,inf=new_infected))
+    }
+  }
+  table
+}
+```
+
+To explore how infection dynamics vary with 𝛽, we simulate the model for several values, including below, around, and far above the epidemic threshold. Each simulation starts with 1% of randomly selected clients as initial spreaders.
+
+```{r}
+generate_seeds <- function(g) {
+  sample(1:vcount(g), vcount(g) * 0.01)
+}
+
+# different beta-values 
+beta_vals <- c(0.0001, beta_c, 0.001, 0.005, 0.01, 0.05)
+
+# simulation for each beat value
+results <- map_dfr(beta_vals, function(beta){
+  seeds <- generate_seeds(giant_client_net)
+  sim <- sim_sir(giant_client_net, beta, mu, seeds)
+  sim_summary <- sim %>% group_by(t) %>% summarize(ninf = n())
+  sim_summary$beta <- beta
+  sim_summary
+})
+
+```
+
+We then visualize the evolution of the epidemic over time for different transmission probabilities:
+
+```{r}
+ggplot(results, aes(x=t, y=ninf, color=factor(beta))) +
+  geom_line() +
+  labs(title = "SIR Simulation at Different Beta Values",
+       x = "Time (t)", y = "Number of Infections",
+       color = "Beta") +
+  theme_minimal()
+
+```
+
+The results clearly highlight the nonlinear relationship between β and
+epidemic dynamics. At very low transmission rates (e.g., β = 0.0001 and
+the empirically estimated threshold βₛ ≈ 0.000204), the infection fails
+to propagate widely. The curves for these values show minimal infection
+counts that rapidly taper off, indicating that most nodes remain
+susceptible and the disease dies out before achieving large-scale
+spread. This regime corresponds to subcritical transmission, where the
+average number of secondary infections per case is less than one—a
+condition under which sustained epidemics are not feasible.
+
+As β increases just beyond the critical threshold (e.g., β = 0.001 and
+0.005), the system enters a supercritical regime in which epidemic
+outbreaks become viable. These simulations show a rapid escalation in
+infections followed by a decline, consistent with an epidemic peak where
+a significant portion of susceptible individuals becomes infected before
+the pool of infectable contacts is exhausted.
+
+At the highest value tested (β = 0.05), the outbreak is explosive: the
+number of infections surges to a much higher peak and does so in a
+shorter time frame. This indicates a highly transmissible scenario,
+where the infection quickly saturates local neighborhoods within the
+network. Nevertheless, even in this case, the epidemic ultimately
+resolves as recovery depletes the pool of infective agents.
+
+These patterns are shaped by the topology of the projected client network, not by any bipartite structure. The projection introduces dense local clusters due to shared connections with escorts, and high-degree nodes (clients who shared escorts with many others) can act as hubs, facilitating rapid diffusion once infected.
+
+
+To complement the time-based view, we now aggregate the total number of infections for each β. This helps us quantify how dramatically the outcome changes across the epidemic threshold. This plot gives a zoomed-out view of the epidemic size, helping to clearly identify non-linear growth around βc, a hallmark of phase transitions in contagion processes.
+
+```{r}
+total_infections <- results %>%
+  group_by(beta) %>%
+  summarize(total_infected = sum(ninf))
+
+ggplot(total_infections, aes(x = beta, y = total_infected)) +
+  geom_point(size = 2) +
+  geom_vline(xintercept = beta_c, linetype = 2, colour = "red") +
+  labs(
+    title = "Total Infections vs Beta",
+    x = expression(beta),
+    y = "Total Number of Infected Nodes"
+  ) +
+  theme_minimal()
+```
+
+As seen, for values of 𝛽 below the theoretical threshold (marked by the red dashed line), the infection struggles to spread, resulting in only minimal outbreaks. However, once 𝛽
+crosses this critical point, the number of infections rises sharply—demonstrating a typical phase transition in epidemic dynamics.
+
+This behavior underscores the structural susceptibility of our projected client network. Since clients are connected whenever they share an escort, the projection produces dense local clustering and overlapping links, enabling rapid transmission once the threshold is surpassed. Importantly, even slight increases in 𝛽beyond the critical value lead to a dramatic growth in epidemic size, confirming that the network’s topology is characterized by short paths and concentrated cores amplifies contagion processes.
+
+### 3. Choose a well β above above βc . Using centrality, communities or any other suitable metric, find a better set of 1% of seeds in the network so we get more infected people than the random case. Measure the difference of your choice with the random case as: a)The difference in the total number of infected people and b)The difference in the time of the peak of infection (when most infections happen).
+
+To assess how seeding strategies affect epidemic spread in our unipartite client network, we simulate outbreaks using a transmission probability 𝛽= 0.01, which lies well above the critical threshold 𝛽𝑐. This setting ensures that differences in diffusion patterns due to seed selection are observable and meaningful.
+
+We compare two seeding strategies: one with 1% of nodes selected at random, and the other with the top 1% of nodes ranked by closeness centrality. Closeness is an intuitive choice in this context—it favors nodes that are, on average, closer to others in the network, and are thus well positioned to propagate infections quickly.
+
+```{r}
+#  Parameters
+mu <- 0.1
+beta_high <- 0.01  # well above beta_c
+ 
+
+# Seed selection 
+# 1% random seeds
+set.seed(123)
+random_seeds <- sample(1:vcount(giant_client_net), vcount(giant_client_net) * 0.01)
+
+
+centrality <- closeness(giant_client_net)
+centrality_df <- data.frame(node = 1:vcount(giant_client_net), score = centrality)
+top_seeds <- centrality_df %>%
+  arrange(desc(score)) %>%
+  slice_head(n = round(vcount(giant_client_net) * 0.01)) %>%
+  pull(node)
+```
+
+Using the same SIR simulation function as the previous exercise, we run separate simulations for both seed sets and extract key outcome metrics:
+
+```{r}
+# Run SIR simulations
+sim_random <- sim_sir(giant_client_net, beta_high, mu, random_seeds)
+sim_targeted <- sim_sir(giant_client_net, beta_high, mu, top_seeds)
+```
+
+With both simulations completed, we now evaluate and compare their outcomes. First, we look at the total number of unique infected individuals in each case:
+
+```{r}
+total_random <- sim_random %>% distinct(inf) %>% nrow()
+total_targeted <- sim_targeted %>% distinct(inf) %>% nrow()
+diff_total <- total_targeted - total_random
+
+
+cat("Random total infected:", total_random, "\n")
+cat("Targeted total infected:", total_targeted, "\n")
+cat("Difference:", diff_total, "more infected with centrality-based seeding\n")
+
+```
+
+With random seeds, 7,776 individuals were infected, while targeted seeding led to 7,785 infections, just 9 more people. Although the increase is modest, it confirms that targeting central nodes slightly increases the reach of the outbreak. This makes sense, as central nodes in the network are more likely to connect to different parts of the structure.
+
+Then, we compare the time at which the infection peaks, the moment when the number of new infections is highest. This shows how quickly the epidemic escalates depending on the seeding strategy:
+
+```{r}
+# Run again and group by time
+sim_random <- sim_sir(giant_client_net, beta_high, mu, random_seeds) %>%
+  group_by(t) %>% summarize(ninf = n())
+
+sim_targeted <- sim_sir(giant_client_net, beta_high, mu, top_seeds) %>%
+  group_by(t) %>% summarize(ninf = n())
+
+# Time of peak (max infections)
+peak_random <- sim_random$t[which.max(sim_random$ninf)]
+peak_targeted <- sim_targeted$t[which.max(sim_targeted$ninf)]
+diff_peak <- peak_random - peak_targeted
+
+cat("Peak (random):   t =", peak_random, "\n")
+cat("Peak (targeted): t =", peak_targeted, "\n")
+cat("Difference in peak time:", diff_peak, "time steps earlier with targeted seeding\n")
+```
+
+Here, the impact of targeted seeding is more pronounced. In the random case, infections peaked at time step 4, while with centrality-based seeding, the peak occurred at time step 2—a 2-step acceleration. This shows that central nodes not only help the infection reach more individuals but also enable it to spread much faster.
+
+These findings carry significant implications for public health responses in sexually transmitted infection contexts. In contact networks like ours—projected from shared interactions with escorts—central nodes serve as natural conduits for rapid diffusion. Even if the total number of infections is only modestly higher, the speed at which the outbreak develops can critically reduce the window for effective intervention.
+
+### 4. Using the same , design a “quarantine strategy”: at time step or , quarantine of the susceptible population. You can model quarantine by temporally removing these nodes. Release the quarantined nodes time steps later, making them susceptible again. Measure the difference with respect to no quarantine.
+
+To investigate the effectiveness of a quarantine strategy in mitigating the spread of an infectious disease over a network, we extend the standard SIR model by incorporating a temporary quarantine mechanism. The following function simulates this process by allowing a fixed fraction of susceptible individuals to be removed from the network at a specific time point and reintroduced later. This allows us to study the impact of early isolation on epidemic dynamics:
+
+```{r}
+sim_sir_quarantine <- function(g, beta, mu, seeds, quarantine_t = 4, quarantine_frac = 0.2, quarantine_duration = 8){
+  state <- rep(0, vcount(g))  # 0 = S, 1 = I, 2 = R, 3 = Quarantined (temporary)
+  state[seeds] <- 1
+  t <- 0
+  table <- data.frame(t=0, inf=seeds)
+  
+  quarantine_nodes <- c()
+  quarantine_release_t <- NA
+  
+  while(sum(state == 1) > 0 || any(state == 3)){
+    t <- t + 1
+
+    # Recover infected
+    infected <- which(state == 1)
+    state[infected] <- ifelse(runif(length(infected)) < mu, 2, 1)
+    
+    # Quarantine: at time t, choose 20% of susceptible
+    if (t == quarantine_t) {
+      susceptible <- which(state == 0)
+      quarantine_nodes <- sample(susceptible, round(length(susceptible) * quarantine_frac))
+      state[quarantine_nodes] <- 3  # Mark as quarantined
+      quarantine_release_t <- t + quarantine_duration
+    }
+
+    # Release quarantine
+    if (!is.na(quarantine_release_t) && t == quarantine_release_t) {
+      state[quarantine_nodes] <- 0  # Back to susceptible
+    }
+
+    # Infection
+    infected <- which(state == 1)
+    susceptible <- which(state == 0)
+    contacts <- as.numeric(unlist(adjacent_vertices(g, infected)))
+    contacts <- contacts[contacts %in% susceptible]
+    new_infected <- contacts[runif(length(contacts)) < beta]
+    if (length(new_infected) > 0){
+      state[new_infected] <- 1
+      table <- rbind(table, data.frame(t = t, inf = new_infected))
+    }
+  }
+  table
+}
+```
+
+To compare the epidemic trajectories with and without quarantine, we run both simulations under identical conditions. In each case, we initiate the epidemic with 1% of randomly infected nodes, and we apply the quarantine intervention at time step 4 for a duration of 8 steps. The outputs are then merged for comparison:
+
+```{r}
+# Reuse seeds
+set.seed(123)
+seeds <- sample(1:vcount(giant_client_net), vcount(giant_client_net) * 0.01)
+
+# Run without quarantine
+no_q <- sim_sir(giant_client_net, beta_high, mu, seeds) %>%
+  group_by(t) %>% summarize(ninf = n()) %>%
+  mutate(strategy = "No Quarantine")
+
+# Run with quarantine at t = 4, for 8 steps, 20% of susceptibles
+q <- sim_sir_quarantine(giant_client_net, beta_high, mu, seeds,
+                        quarantine_t = 4, quarantine_frac = 0.2, quarantine_duration = 8) %>%
+  group_by(t) %>% summarize(ninf = n()) %>%
+  mutate(strategy = "Quarantine")
+
+# Combine
+quarantine_results <- bind_rows(no_q, q)
+
+```
+
+Finally, to visualize and interpret the effect of the quarantine strategy, we plot the number of new infections over time for both scenarios. This allows us to directly observe differences in the epidemic curve and assess whether the intervention delays or reduces peak infection levels:
+
+```{r}
+ggplot(quarantine_results, aes(x = t, y = ninf, color = strategy)) +
+  geom_line() +
+  labs(title = "Effect of Quarantine Strategy on Infection Spread",
+       x = "Time (t)", y = "Number of Infections",
+       color = "Strategy") +
+  theme_minimal()
+
+```
+The graph compares the evolution of new infections over time with and without a quarantine strategy. Both scenarios show a sharp initial outbreak, indicating a fast virus spread due to the high transmission rate (β = 0.01), which is well above the epidemic threshold.
+
+Interestingly, the curve with quarantine (in blue) peaks slightly higher than the one without quarantine, but it also declines more rapidly. This suggests that while the quarantine—applied between time steps 4 and 12—didn't prevent the outbreak, it did help bring the epidemic under control more quickly. By reducing the number of susceptible individuals available for infection, the intervention effectively shortened the lifespan of the outbreak.
+
+In short, although late and partial quarantine wasn't enough to stop the initial surge, it still had a meaningful impact by limiting how long the epidemic lasted. The timing of the intervention clearly plays a critical role in how effective it is.
+
+### 5. Suppose now that you can convince 5% of people in the network not to spread that information at all.
+
+-   Choose those 5% randomly in the network. Simulate the SIR model
+    above using 1% of the remaining nodes as seeds. Choose those seeds
+    randomly.
+    
+In this first approach, we randomly select 5% of nodes to be "blocked," meaning they do not participate in the diffusion process. These nodes are removed from the network before selecting the 1% of seeds among the remaining nodes.
+
+```{r}
+mu <- 0.1
+beta_block <- 0.01  # well above beta_c
+n_total <- vcount(giant_client_net)
+n_block <- round(n_total * 0.05)
+n_seeds <- round((n_total - n_block) * 0.01)
+
+set.seed(123)
+blocked_random <- sample(1:n_total, n_block)
+g_rand_blocked <- delete_vertices(giant_client_net, blocked_random)
+
+seeds_rand <- sample(1:vcount(g_rand_blocked), n_seeds)
+
+sim_rand_blocked <- sim_sir(g_rand_blocked, beta_block, mu, seeds_rand)
+```
+
+-   Choose those 5% according to their centrality. Simulate the SIR
+    model above using 1% of the remaining nodes as seeds. Choose those
+    seeds randomly.
+    
+In the second scenario, we adopt a targeted strategy by removing the top 5% of nodes based on closeness centrality. These central nodes are structurally important for the speed and breadth of information flow. Once removed, we randomly select 1% of the remaining nodes as seeds and run the simulation again.
+
+```{r}
+centrality <- closeness(giant_client_net)
+top_blocked <- order(centrality, decreasing = TRUE)[1:n_block]
+g_central_blocked <- delete_vertices(giant_client_net, top_blocked)
+
+seeds_central <- sample(1:vcount(g_central_blocked), n_seeds)
+
+sim_central_blocked <- sim_sir(g_central_blocked, beta_block, mu, seeds_central)
+
+```
+
+-   Measure the difference between both cases as you did in step 3.
+
+We now compare the outcomes from both strategies. First, we calculate the total number of unique infected individuals in each case and observe the difference. Then, we measure the time step at which the number of infections peaked in each simulation. These differences help us assess which immunization strategy was more effective in limiting and delaying the spread of information.
+
+```{r}
+# Total infected
+total_inf_rand <- sim_rand_blocked %>% distinct(inf) %>% nrow()
+total_inf_central <- sim_central_blocked %>% distinct(inf) %>% nrow()
+diff_total_inf <- total_inf_rand - total_inf_central
+
+cat("Random block infected:", total_inf_rand, "\n")
+cat("Centrality block infected:", total_inf_central, "\n")
+cat("Difference:", diff_total_inf, "fewer infections with centrality-based blocking\n")
+```
+With random blocking, 7,330 individuals were infected. When the top 5% of central nodes were removed, the number of infections decreased to 7,046—a reduction of 284 cases. This clearly demonstrates the effectiveness of targeting influential nodes in mitigating the epidemic’s spread.
+
+In a unipartite projection of the client network—where all nodes represent individuals and edges represent shared escorts—central nodes likely occupy structurally strategic positions that connect otherwise distant regions. Removing them disrupts connectivity more efficiently than random deletion, which often eliminates peripheral or redundant links.
+
+```{r}
+# Peak time comparison
+peak_rand <- sim_rand_blocked %>% group_by(t) %>% summarize(ninf = n()) %>%
+  filter(ninf == max(ninf)) %>% pull(t)
+
+peak_central <- sim_central_blocked %>% group_by(t) %>% summarize(ninf = n()) %>%
+  filter(ninf == max(ninf)) %>% pull(t)
+
+diff_peak_time <- peak_rand - peak_central
+
+cat("Peak (random):", peak_rand, "\n")
+cat("Peak (centrality):", peak_central, "\n")
+cat("Difference in peak time:", diff_peak_time, "steps\n")
+```
+With random blocking, the infection peaked at time step 4. With centrality-based blocking, the peak was delayed to time step 5. Though the shift may seem small, it highlights a crucial insight: removing structurally central nodes not only reduces epidemic size but also slows down its propagation.
+
+In a network where information or disease can spread rapidly through tightly connected clusters, delaying the peak by even one or two time steps can create valuable time for interventions.
+
+### 6.  Comment on the relationship between the findings in steps 3 and 5 using the same type of centrality for the 1% in step 3 and 5% in step 5.
+
+In both experiments (part c and part d), we used closeness centrality to identify highly influential nodes in the network. Interestingly, the same centrality measure enabled two opposite strategies:
+
+In part c, selecting the top 1% most central nodes as initial spreaders significantly accelerated and slightly amplified the spread. These nodes, thanks to their strategic position, could quickly reach many others, acting as effective spreaders.
+
+In part d, removing the top 5% central nodes weakened the network’s overall connectivity. As a result, the spread became slower and less extensive, demonstrating how central individuals are crucial to maintaining fast and widespread transmission.
+
+This contrast highlights that centrality can be leveraged either to promote or prevent diffusion. When the goal is to maximize spread, central nodes are the best seeds. When the goal is containment, removing those same nodes is a highly effective strategy.
+
+### 7.  With the results of step 2, train a model that predicts that time to     infection of a node using their degree, centrality, betweeness, page rank and any other predictors you see fit. Use that model to select the seed nodes as those with the smallest time to infection in step 3. Repeat step 5 with this knowledge.
+
+To begin, we simulate a standard SIR process with 1% of the nodes chosen at random as the initial spreaders. This will give us the infection times that we’ll use as a target variable to train our prediction model.
+
+```{r}
+# One full SIR simulation
+set.seed(123)
+seeds <- sample(1:vcount(giant_client_net), vcount(giant_client_net) * 0.01)
+sim_data <- sim_sir(giant_client_net, beta = 0.01, mu = 0.1, seeds)
+```
+
+Next, we extract structural features from the network that might explain why some nodes are infected earlier than others. These include node degree, closeness centrality, betweenness centrality, and PageRank—common measures that reflect a node's connectivity, centrality, and influence within the network topology.
+
+```{r}
+# Features
+df <- data.frame(
+  node = 1:vcount(giant_client_net),
+  degree = degree(giant_client_net),
+  closeness = closeness(giant_client_net),
+  betweenness = betweenness(giant_client_net),
+  pagerank = page_rank(giant_client_net)$vector
+)
+```
+
+We then merge these features with the infection times from the earlier simulation. Nodes that were never infected during the process are assigned a placeholder infection time equal to the maximum observed time plus one, allowing for consistent modeling.
+
+```{r}
+# Merge with infection time
+df <- df %>%
+  left_join(sim_data, by = c("node" = "inf")) %>%
+  mutate(t = ifelse(is.na(t), max(sim_data$t) + 1, t))  # assign max+1 to uninfected
+```
+
+Using this dataset, we fit a linear regression model to predict time to infection based solely on network characteristics. The goal is to identify which nodes are most vulnerable to early infection, based on their structural position.
+
+```{r}
+model <- lm(t ~ degree + closeness + betweenness + pagerank, data = df)
+summary(model)
+
+```
+
+The model shows moderate explanatory power, with an adjusted R² around 0.30. Notably, closeness and PageRank are negatively associated with infection time—indicating that more central and influential nodes are infected earlier. In contrast, higher degree and betweenness are linked to slightly later infection, potentially reflecting their role in bridging or peripheral network zones. These findings support the idea that early infection is tied to centrality in the projected client network.
+
+Using the model’s predictions, we select the 1% of nodes with the lowest predicted infection times as new seed nodes. These are those the model deems most likely to spread infection early and efficiently.
+
+```{r}
+df$predicted_t <- predict(model, df)
+predicted_seeds <- df %>%
+  arrange(predicted_t) %>%
+  slice_head(n = round(vcount(giant_client_net) * 0.01)) %>%
+  pull(node)
+
+```
+
+To evaluate the effectiveness of this data-driven seeding strategy, we compare it with two baselines: one using randomly chosen nodes, and another using top centrality nodes (e.g., based on closeness centrality). For each group, we run the SIR model and track the resulting infection dynamics.
+
+```{r}
+sim_predicted <- sim_sir(giant_client_net, beta = 0.01, mu = 0.1, predicted_seeds)
+
+sim_rand <- sim_sir(giant_client_net, beta = 0.01, mu = 0.1,
+                    sample(1:vcount(giant_client_net), vcount(giant_client_net) * 0.01))
+
+sim_central <- sim_sir(giant_client_net, beta = 0.01, mu = 0.1, top_seeds)
+
+```
+
+Finally, we visualize the infection curves to assess differences in spread speed and extent across the three strategies.
+
+```{r}
+prepare_plot <- function(sim, label) {
+  sim %>% group_by(t) %>% summarize(ninf = n()) %>% mutate(type = label)
+}
+
+df_all <- bind_rows(
+  prepare_plot(sim_rand, "Random"),
+  prepare_plot(sim_central, "Centrality"),
+  prepare_plot(sim_predicted, "Predicted")
+)
+
+ggplot(df_all, aes(x = t, y = ninf, color = type)) +
+  geom_line() +
+  labs(title = "SIR Spread by Seed Strategy",
+       x = "Time", y = "New Infections", color = "Seeding Strategy") +
+  theme_minimal()
+
+```
+
+Interestingly, the results show that infection curves across all strategies—random, centrality-based, and prediction-based—are quite similar. All exhibit a sharp rise followed by a rapid decline in new infections. This suggests that in this projected client network, the structure facilitates fast, dense diffusion once the infection reaches the network’s core, regardless of where it starts.
+
+This behavior is partly explained by the way the network was constructed. Although we are working with a unipartite projection, the original bipartite nature of the data (clients connected through shared escorts) leaves a strong imprint. Specifically, each escort acts as a hub connecting multiple clients, which in turn generates dense local clusters and overlapping neighborhoods in the projected client-to-client network. These structural patterns reduce the number of unique paths infection can take and increase redundancy in how nodes are connected.
+
+In short, although predictive modeling based on network features can identify nodes prone to early infection, the overall impact of optimized seeding appears limited in this context. The topology of the network—shaped by escort-mediated interactions and characterized by overlapping ties and tightly-knit clusters—supports rapid epidemic saturation. Once the infection enters one of these highly connected areas, it spreads widely and quickly, making the initial choice of seed nodes less critical than in sparser or more heterogeneous networks.
+
